@@ -370,6 +370,11 @@ function startTimer(seconds) {
 
 /* ---------------- NEXT EXERCISE ---------------- */
 
+function normalizeName(name) {
+    return name.toLowerCase().replace(/[\s-]/g, "");
+}
+
+
 function moveToNextExercise() {
 
     if (isSwitching) return;
@@ -494,5 +499,6 @@ console.log("Workout Routine:", workoutRoutine);
 </script>
 
 </html>
+
 
 
