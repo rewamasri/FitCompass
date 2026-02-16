@@ -244,7 +244,7 @@
         <h1 id="current_state">state</h1>
         </div>
 
-      <div class="camera-box">   
+      <div class="camera-box">
              <img src="{{ url_for('webcam_feed') }}">
       </div>
          <div id="overlay">
@@ -261,7 +261,7 @@
     <img id="exercise_gif" src="{{ url_for('static', filename='squats.gif') }}">
   </div>
 
-    
+
     <!-- <button onclick="changeWorkout('squats')">count squats</button>
     <button onclick="changeWorkout('situps')">count situps</button>
     <button onclick="changeWorkout('lunges')">count lunges</button> -->
@@ -272,12 +272,14 @@ const ding = new Audio("{{ url_for('static', filename='repding.mp3') }}");
 
 /* ---------------- GIF MAP ---------------- */
 
+
+
 const gifMap = {
   squats: "{{ url_for('static', filename='squats.gif') }}",
   lunges: "{{ url_for('static', filename='lunges.gif') }}",
   situps: "{{ url_for('static', filename='situps.gif') }}",
   jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
-  pushups: "{{ url_for('static', filename='pushups.gif') }}",
+  pushups: "{{ url_for('static', filename='pushup.gif') }}",
   running: "{{ url_for('static', filename='running.gif') }}"
 };
 
@@ -318,18 +320,21 @@ const bar = document.getElementById("total-rep-percentage");
 
 function changeExercise(name) {
 
+    const normalized = normalizeName(name);
+
     document.getElementById('exercise_name').innerText = name;
 
-    if (gifMap[name]) {
-        document.getElementById('exercise_gif').src = gifMap[name];
+    if (gifMap[normalized]) {
+        document.getElementById('exercise_gif').src = gifMap[normalized];
     }
 
     return fetch('/switch_exercise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exercise: name })
+        body: JSON.stringify({ exercise: normalized })
     });
 }
+
 
 /* ---------------- APPLY UI MODE ---------------- */
 
@@ -362,13 +367,18 @@ function startTimer(seconds) {
             timerInterval = null;
             moveToNextExercise();
         }
-       
+
     }, 1000);
-    
+
     fetch('/reset_stats', { method: 'POST' }).catch(()=>{});
 }
 
 /* ---------------- NEXT EXERCISE ---------------- */
+
+function normalizeName(name) {
+    return name.toLowerCase().replace(/[\s-]/g, "");
+}
+
 
 function moveToNextExercise() {
 
@@ -491,8 +501,8 @@ window.onload = () => {
     }
 };
 console.log("Workout Routine:", workoutRoutine);
-
 </script>
 
 </html>
+
 
