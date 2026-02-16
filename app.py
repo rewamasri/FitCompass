@@ -1223,43 +1223,32 @@ def login():
 # -------------------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+
     if request.method == 'POST':
+
         username = request.form['username']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
+        goal = request.form['goal']
+        workouts_per_week = int(request.form['workouts_per_week'])
+        body_part = request.form['body_part']
 
-        goal = request.form.get('goal')
         workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
         goal_other = json.dumps(all_selected_exercises)
-        workouts_per_week = request.form.get('workouts_per_week')
-        body_part = request.form.get('body_part')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO UserLogins
+            (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan))
+        conn.commit()
+        conn.close()
 
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
+        return redirect(url_for('login'))
 
-            # Insert user
-            cursor.execute(
-                """
-                INSERT INTO UserLogins (username, email, password, goal, goal_other, workouts_per_week, body_part)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (username, email, password, goal, goal_other, workouts_per_week, body_part)
-            )
-            user_id = cursor.lastrowid
-
-            conn.commit()
-            conn.close()
-
-            return redirect(url_for('login'))
-
-        except sqlite3.IntegrityError:
-            conn.close()
-            flash("Username or email already exists")
-            return redirect(url_for('register'))
-
-    return render_template('register.html')
-
+    return render_template("register.html")
 # -------------------------
 # Home
 # -------------------------
