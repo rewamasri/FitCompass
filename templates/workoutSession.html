@@ -318,16 +318,18 @@ const bar = document.getElementById("total-rep-percentage");
 
 function changeExercise(name) {
 
+    const normalized = normalizeName(name);
+
     document.getElementById('exercise_name').innerText = name;
 
-    if (gifMap[name]) {
-        document.getElementById('exercise_gif').src = gifMap[name];
+    if (gifMap[normalized]) {
+        document.getElementById('exercise_gif').src = gifMap[normalized];
     }
 
     return fetch('/switch_exercise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exercise: name })
+        body: JSON.stringify({ exercise: normalized })
     });
 }
 
@@ -499,6 +501,7 @@ console.log("Workout Routine:", workoutRoutine);
 </script>
 
 </html>
+
 
 
 
