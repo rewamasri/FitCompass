@@ -6,6 +6,7 @@
   <title>FitCompass - Home</title>
 
   <style>
+    /*main colors and formatting*/
     :root{
       --bg-main:#1f4d69;
       --bg-sidebar:#d8eff4;
@@ -19,7 +20,7 @@
     }
 
     *{ box-sizing:border-box; }
-
+    /*CSS for body of page*/
     body{
       margin:0;
       font-family:var(--font);
@@ -32,45 +33,63 @@
 
     /* Sidebar */
     .sidebar{
-      width:260px;
-      background:var(--bg-sidebar);
-      color:var(--text-dark);
-      display:flex;
-      flex-direction:column;
-      padding:18px 14px;
-      border-right:3px solid rgba(0,0,0,.08);
+      width: 260px;
+      background: var(--bg-sidebar);
+      color: var(--text-dark);
+      display: flex;
+      flex-direction: column;
+      padding: 18px 14px;
+      gap: 12px;
+      border-right: 3px solid rgba(0,0,0,.08);
     }
 
     .sidebar-title{
-      font-size:20px;
-      margin-bottom:10px;
+      font-size: 20px;
+      margin: 6px 8px 8px;
+      letter-spacing: .5px;
+      opacity: .85;
     }
 
     .nav{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      flex:1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 0 6px;
+      flex: 1;
     }
 
     .nav button{
-      border:none;
-      border-radius:10px;
-      padding:12px;
-      background:white;
-      font-family:var(--font);
-      cursor:pointer;
-      text-align:left;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: white;
+      color: var(--text-dark);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 16px;
+      text-align: left;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+      transition: transform .06s ease, filter .12s ease;
     }
+    .nav button:hover{ filter: brightness(.98); }
+    .nav button:active{ transform: translateY(1px); }
 
+    .logout{
+      margin-top: auto;
+      padding: 0 6px 8px;
+    }
     .logout button{
-      border:none;
-      border-radius:10px;
-      padding:14px;
-      background:var(--btn-red);
-      font-family:var(--font);
-      cursor:pointer;
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 14px;
+      background: var(--btn-red);
+      color: #1a0b0d;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 18px;
+      box-shadow: 0 8px 18px rgba(0,0,0,.18);
     }
 
     /* Main */
@@ -84,14 +103,15 @@
       background:rgba(255,255,255,.12);
       padding:14px;
       border-radius:12px;
-      margin-bottom:20px;
+      margin-bottom:18px;
     }
 
     .top-row{
       display:flex;
       justify-content:space-between;
       align-items:center;
-      margin-bottom:30px;
+      margin-bottom:28px;
+      gap:16px;
     }
 
     .progress{
@@ -105,11 +125,11 @@
     .progress-fill{
       height:100%;
       background:var(--btn-green);
-      color:black;
-      font-weight:bold;
       display:flex;
       align-items:center;
       padding-left:10px;
+      color:#000;
+      font-weight:bold;
     }
 
     .points{
@@ -191,15 +211,15 @@
     <div class="sidebar-title">FitCompass</div>
 
     <div class="nav">
-      <button onclick="location.href='{{ url_for('profile') }}'">Profile</button>
-      <button onclick="location.href='{{ url_for('history') }}'">History</button>
-      <button onclick="location.href='{{ url_for('library') }}'">Library</button>
-      <button onclick="location.href='{{ url_for('shop') }}'">Shop</button>
-      <button onclick="location.href='{{ url_for('settings') }}'">Settings</button>
+      <button onclick="location.href='{{ url_for('profile') }}'">profile</button>
+      <button onclick="location.href='{{ url_for('history') }}'">history</button>
+      <button onclick="location.href='{{ url_for('library') }}'">library</button>
+      <button onclick="location.href='{{ url_for('shop') }}'">shop</button>
+      <button onclick="location.href='{{ url_for('settings') }}'">settings</button>
     </div>
 
     <div class="logout">
-      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+      <button onclick="location.href='{{ url_for('logout') }}'">log out</button>
     </div>
   </aside>
 

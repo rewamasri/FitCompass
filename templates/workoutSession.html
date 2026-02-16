@@ -268,216 +268,192 @@
   </main>
 
     <script>
-const ding = new Audio("{{ url_for('static', filename='repding.mp3') }}");
+        const ding=new Audio("{{url_for('static', filename='repding.mp3')}}");
 
-/* ---------------- WORKOUT ROUTINE FROM FLASK ---------------- */
+        const workoutRoutine=[{name: 'jumpingjacks',type: 'timer', duration: 30},
+                              {name: 'running', type: 'timer', duration: 30},
+                              {name: 'squats', target: 2},
+                              {name: 'lunges', target: 2},
+                            ]
 
-/* 
-Flask should pass:
-exercises = ["squats","lunges","jumpingjacks"]
-*/
-const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
-    .map(ex => {
-        // Example rule:
-        // cardio exercises = timer
-        if (ex === "jumpingjacks" || ex === "running") {
-            return { name: ex, type: "timer", duration: 30 };
+        repsCompleted = 0; //this is reps completed across all workouts
+        const totalReps=4;
+
+        let lastCount=0;
+        let routineIndex=0;
+        let workoutFinished=false
+        let isSwitching = false; // ai lock 
+        const bar = document.getElementById("total-rep-percentage");
+        let timerInterval = null;
+        let remainingTime = 0;
+        let statsInterval = null;
+
+        function changeExercise(name) {
+            document.getElementById('exercise_name').innerText=name;
+            if (gifMap[name]) {
+                document.getElementById('exercise_gif').src = gifMap[name];
+            }
+
+            return fetch('/switch_exercise', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ exercise: name })
+            });
         }
-        return { name: ex, type: "reps", target: 3 };
-    });
 
-console.log("Workout Routine:", workoutRoutine);
-
-/* ---------------- STATE ---------------- */
-
-let routineIndex = 0;
-let workoutFinished = false;
-let isSwitching = false;
-
-let lastCount = 0;
-let repsCompleted = 0;
-
-let timerInterval = null;
-let remainingTime = 0;
-let statsInterval = null;
-
-const totalReps = workoutRoutine
-    .filter(ex => ex.type === "reps")
-    .reduce((sum, ex) => sum + ex.target, 0);
-
-const bar = document.getElementById("total-rep-percentage");
-
-/* ---------------- GIF MAP ---------------- */
-
-const gifMap = {
-  squats: "{{ url_for('static', filename='squats.gif') }}",
-  lunges: "{{ url_for('static', filename='lunges.gif') }}",
-  situps: "{{ url_for('static', filename='situps.gif') }}",
-  jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
-  running: "{{ url_for('static', filename='running.gif') }}"
-};
-
-/* ---------------- SWITCH EXERCISE ---------------- */
-
-function changeExercise(name) {
-
-    document.getElementById('exercise_name').innerText = name;
-
-    if (gifMap[name]) {
-        document.getElementById('exercise_gif').src = gifMap[name];
-    }
-
-    return fetch('/switch_exercise', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exercise: name })
-    });
-}
-
-/* ---------------- TIMER ---------------- */
-
-function startTimer(seconds) {
-
-    clearInterval(timerInterval);
-    remainingTime = seconds;
-
-    document.getElementById('timer_card').style.display = 'block';
-    document.getElementById('reps_card').style.display = 'none';
-    document.getElementById('timer_display').innerText = remainingTime;
-
-    timerInterval = setInterval(() => {
-        remainingTime--;
-        document.getElementById('timer_display').innerText = remainingTime;
-
-        if (remainingTime <= 0) {
+        function startTimer(seconds) {
             clearInterval(timerInterval);
-            moveToNextExercise();
+            remainingTime = seconds;
+
+            document.getElementById('timer_card').style.display = 'block';
+            document.getElementById('reps_card').style.display = 'none';
+            document.getElementById('timer_display').innerText = remainingTime;
+
+            document.getElementById('current_state').innerText = "TIMER";
+
+            timerInterval = setInterval(() => {
+                remainingTime--;
+                document.getElementById('timer_display').innerText = remainingTime;
+
+                if (remainingTime <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('timer_card').style.display = 'none';
+                    moveToNextExercise();
+                }
+            }, 1000);
         }
-    }, 1000);
-}
-
-/* ---------------- NEXT EXERCISE ---------------- */
-
-function moveToNextExercise() {
-
-    if (isSwitching) return;
-    isSwitching = true;
-
-    clearInterval(timerInterval);
-    timerInterval = null;
-
-    fetch('/reset_stats', { method: 'POST' }).then(() => {
-
-        routineIndex++;
-
-        if (routineIndex < workoutRoutine.length) {
-
-            const next = workoutRoutine[routineIndex];
-
-            lastCount = 0;
-            document.getElementById('rep_count').innerText = "0";
-
-            changeExercise(next.name);
-
-            if (next.type === "timer") {
-                startTimer(next.duration);
+        
+        function applyExerciseUIMode(ex) {
+            if (ex.type === 'timer') {
+                document.getElementById('timer_card').style.display = 'block';
+                document.getElementById('reps_card').style.display = 'none';
             } else {
+                clearInterval(timerInterval); 
+                timerInterval = null;
                 document.getElementById('timer_card').style.display = 'none';
                 document.getElementById('reps_card').style.display = 'block';
             }
-
-        } else {
-            workoutFinished = true;
-            window.location.href = "{{ url_for('workoutcomplete') }}";
-        }
-    });
-
-    setTimeout(() => isSwitching = false, 800);
-}
-
-/* ---------------- UPDATE STATS ---------------- */
-
-function updateStats() {
-
-    if (workoutFinished) return;
-
-    const current = workoutRoutine[routineIndex];
-    if (current.type === "timer") return;
-
-    fetch('/get_exercise_data')
-    .then(res => res.json())
-    .then(data => {
-
-        document.getElementById('rep_count').innerText = data.count;
-        document.getElementById('current_state').innerText = data.state;
-
-        if (data.count > lastCount) {
-            const diff = data.count - lastCount;
-            repsCompleted += diff;
-            lastCount = data.count;
-            ding.play();
         }
 
-        if (totalReps > 0) {
-            const percent = Math.round((repsCompleted / totalReps) * 100);
-            bar.style.width = percent + "%";
-            bar.textContent = percent + "%";
+        function moveToNextExercise() {
+            if (isSwitching) return;
+            isSwitching = true;
+            document.getElementById('rep_count').innerText = "0";
+
+            routineIndex++;
+            fetch('/reset_stats', { method: 'POST' })
+                .then(() => {
+                    if (routineIndex < workoutRoutine.length) {
+                        const nextExercise = workoutRoutine[routineIndex].name;
+                        lastCount=0;
+                       
+                        changeExercise(nextExercise);
+                    } else {
+                        workoutFinished = true;
+                        repsCompleted=0;
+                        window.location.href = "{{ url_for('workoutcomplete') }}";
+                    }
+                });
+
+            clearInterval(timerInterval);
+            timerInterval = null;
+            
+            // 1. Reset the UI immediately for the user
+            document.getElementById('rep_count').innerText = "0";
+            document.getElementById('timer_display').innerText = "30";
+
+            if(routineIndex < workoutRoutine.length){
+              const nextExercise = workoutRoutine[routineIndex];
+              changeExercise(nextExercise.name);
+              applyExerciseUIMode(nextExercise);
+              if(nextExercise.type === 'timer'){
+                startTimer(nextExercise.duration);
+              }else{
+                fetch('/reset_stats', { method: 'POST' }).catch(()=>{});
+              }
+            }else{
+              workoutFinished = true;
+              window.location.href = "{{ url_for('workoutcomplete') }}";
+            }
+            setTimeout(() => { isSwitching = false; }, 1000);
         }
 
-        if (data.count >= current.target) {
-            moveToNextExercise();
+        function updateStats() {
+            const current = workoutRoutine[routineIndex];
+
+            if (current.type === 'timer')return;
+            
+            fetch('/get_exercise_data')
+                .then(response => response.json())
+                .then(data => {
+
+                    document.getElementById('rep_count').innerText = data.count;
+                    document.getElementById('current_state').innerText = data.state;
+                    
+                    const goalCount= workoutRoutine[routineIndex].target
+
+                    bar.style.width = (repsCompleted/totalReps) *100+ "%";
+                    bar.textContent = (repsCompleted/totalReps)*100 + "%";
+                    if(lastCount<data.count){
+                      const diff = data.count - lastCount;  // how many reps actually increased
+  
+                      lastCount=data.count;
+                      repsCompleted += diff;
+                      ding.play();
+                    }
+
+                    if(data.count>=goalCount){
+                        moveToNextExercise()
+                    }
+                })
         }
-    });
-}
-
-/* ---------------- START SESSION ---------------- */
-
-function startSession() {
-
-    document.getElementById("overlay").style.display = 'none';
-
-    ding.play().then(() => {
+       
+    function startSession(){
+      document.getElementById("overlay").style.display='none';
+      ding.play().then(() => {
         ding.pause();
         ding.currentTime = 0;
-    }).catch(()=>{});
+      }).catch(error => console.log("Audio primed"));
+      const cameraImg = document.querySelector('.camera-box img');
+      cameraImg.style.display = 'block';
+      document.querySelector('.exercise-preview').style.display = 'block';
+      const first = workoutRoutine[0];
+          changeExercise(first.name);
+          applyExerciseUIMode(first);
 
-    document.querySelector('.camera-box img').style.display = 'block';
-    document.querySelector('.exercise-preview').style.display = 'block';
-
-    if (workoutRoutine.length > 0) {
-
-        const first = workoutRoutine[0];
-
-        changeExercise(first.name);
-
-        if (first.type === "timer") {
-            startTimer(first.duration);
-        } else {
-            document.getElementById('timer_card').style.display = 'none';
-            document.getElementById('reps_card').style.display = 'block';
-        }
+          if (first.type === 'timer') {
+              startTimer(first.duration);
+          } else {
+              fetch('/reset_stats', { method: 'POST' }).catch(()=>{});
+          }
+          if (statsInterval) clearInterval(statsInterval);
+          setInterval(updateStats, 500);
     }
 
-    if (statsInterval) clearInterval(statsInterval);
-    statsInterval = setInterval(updateStats, 500);
-}
+        
 
-/* ---------------- INIT ---------------- */
+        window.onload = () => {
+          repsCompleted = 0;
+          lastCount = 0;
+          routineIndex = 0;
+          workoutFinished = false;
 
-window.onload = () => {
+          bar.style.width = "0%";
+          bar.textContent = "0%";
+          document.getElementById('rep_count').innerText = "0";
+        };
 
-    repsCompleted = 0;
-    lastCount = 0;
-    routineIndex = 0;
-    workoutFinished = false;
+    const gifMap = {
+      squats: "{{ url_for('static', filename='squats.gif') }}",
+      lunges: "{{ url_for('static', filename='lunges.gif') }}",
+      situps: "{{ url_for('static', filename='situps.gif') }}",
+      gluebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
+      jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
+      pushup: "{{ url_for('static', filename='pushup.gif') }}",
+      supermans: "{{ url_for('static', filename='supermans.gif') }}",
+      running: "{{ url_for('static', filename='running.gif') }}",
+    };
 
-    bar.style.width = "0%";
-    bar.textContent = "0%";
-
-    if (workoutRoutine.length > 0) {
-        changeExercise(workoutRoutine[0].name);
-    }
-};
-</script>
+  </script>
 
 </html>
