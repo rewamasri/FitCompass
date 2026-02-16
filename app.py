@@ -1022,13 +1022,13 @@ upper_body = ["Push-ups", "V pushups"]
 lower_body = ["squats", "lunges"]
 core = ["Sit-ups", "Supermans"]
 time_core = ["Plank"] 
-cardio = ["Jumping Jacks", "Jogging in Place", "Running", "Jump Rope", "Burpees"]
+cardio = ["Jumping Jacks", "Running", ]
 
 push_day = ["Push-ups", "V pushups"]
-leg_day = ["Squats", "Lunges", "Calf Raises"]
+leg_day = ["Squats", "Lunges"]
 
 new_people_exercises = [
-    "Glute Bridges", "Jogging in Place", "Jumping Jacks",
+    "Glute Bridges", "Running", "Jumping Jacks",
     "Lunges", "Push-ups", "Sit-ups", "Squats", "Supermans"
 ]
 
@@ -1223,30 +1223,44 @@ def login():
 # -------------------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+
     if request.method == 'POST':
+
         username = request.form['username']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
 
         goal = request.form.get('goal')
-        workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
-        goal_other = json.dumps(all_selected_exercises)
-        workouts_per_week = request.form.get('workouts_per_week')
+        goal_other = request.form.get('goal_other') if goal == 'other' else None
+        workouts_per_week = int(request.form.get('workouts_per_week', 0))
         body_part = request.form.get('body_part')
 
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Insert user
-            cursor.execute(
-                """
-                INSERT INTO UserLogins (username, email, password, goal, goal_other, workouts_per_week, body_part)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (username, email, password, goal, goal_other, workouts_per_week, body_part)
-            )
-            user_id = cursor.lastrowid
+            # Generate workout plan
+            workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+
+            # If you're storing selected exercises separately
+            # make sure all_selected_exercises exists before this
+            if 'all_selected_exercises' in globals():
+                goal_other = json.dumps(all_selected_exercises)
+
+            cursor.execute("""
+                INSERT INTO UserLogins
+                (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                username,
+                email,
+                password,
+                goal,
+                goal_other,
+                workouts_per_week,
+                body_part,
+                workout_plan
+            ))
 
             conn.commit()
             conn.close()
