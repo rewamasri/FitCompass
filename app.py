@@ -11,7 +11,8 @@ import math
 from flask import jsonify
 import time
 from flask import Response
-
+import random
+import json
 
 from landmarks import *
 
@@ -66,7 +67,7 @@ connection.close()
 camera = cv2.VideoCapture(0)
 #global variable for the latest detected frame
 
-# latest_detection = None
+latest_detection = None
 
 loggedInUsers={}
 class User:
@@ -74,7 +75,8 @@ class User:
         self.user_ID = id
         self.latest_detection = None
         self.currentExercise= None
-        self.exerciseManager = ExerciseManager()
+        self.exerciseManager = None
+        
         
 
 
@@ -592,57 +594,285 @@ class SupermanController:
             cv2.line(annotated_image, hip, knee, color, 4)
         return annotated_image
 
+# -----------------------
+# PUSHUP TOLERANCE
+# -----------------------
+
+IDEAL_BODY_ANGLE = 180
+BODY_ANGLE_TOLERANCE = 15     # +-15 allowed
+
+IDEAL_BODY_SLOPE = 0
+BODY_SLOPE_TOLERANCE = 35     # px
+
+MIN_ELBOW_DOWN = 90
+MAX_ELBOW_UP   = 165
+
 class PushUpState:
     IDLE = "IDLE"
     DOWN = "DOWN"
+    UP   = "UP"
+
 
 class PushUpController:
     def __init__(self):
         self.state = PushUpState.IDLE
         self.count = 0
+        self.elbow_angle = 0
+        self.body_angle = 0
+        self.side = None  # "left" or "right"
+
     def update(self, detection_result, image_shape):
         if not detection_result or not detection_result.pose_landmarks:
             return
-        landmarks = detection_result.pose_landmarks[0] 
+
+        landmarks = detection_result.pose_landmarks[0]
         pixel_landmarks = landmarks_to_pixels(landmarks, image_shape)
 
-        shoulder = pixel_landmarks[RIGHT_SHOULDER]
-        elbow = pixel_landmarks[RIGHT_ELBOW]
-        wrist = pixel_landmarks[RIGHT_WRIST]
-        hip = pixel_landmarks[RIGHT_HIP]
-        knee = pixel_landmarks[RIGHT_KNEE]
+        # ---- Choose best side ----
+        if self.side is None:
+            self.side = "left" if landmarks[LEFT_ELBOW].visibility > landmarks[RIGHT_ELBOW].visibility else "right"
 
+        if self.side == "left":
+            shoulder = pixel_landmarks[LEFT_SHOULDER]
+            elbow    = pixel_landmarks[LEFT_ELBOW]
+            wrist    = pixel_landmarks[LEFT_WRIST]
+            hip      = pixel_landmarks[LEFT_HIP]
+            ankle    = pixel_landmarks[LEFT_ANKLE]
+        else:
+            shoulder = pixel_landmarks[RIGHT_SHOULDER]
+            elbow    = pixel_landmarks[RIGHT_ELBOW]
+            wrist    = pixel_landmarks[RIGHT_WRIST]
+            hip      = pixel_landmarks[RIGHT_HIP]
+            ankle    = pixel_landmarks[RIGHT_ANKLE]
+
+        # ---- Angles ----
         self.elbow_angle = angleBetweenLines(shoulder, elbow, wrist)
-        self.body_alignment = angleBetweenLines(shoulder, hip, knee)
+        self.body_angle  = angleBetweenLines(shoulder, hip, ankle)
 
+        # ---- FORM CHECKS (TOLERANT) ----
+        body_angle_ok = self.body_angle >= (IDEAL_BODY_ANGLE - BODY_ANGLE_TOLERANCE)
+        body_slope_ok = abs(shoulder[1] - hip[1]) <= BODY_SLOPE_TOLERANCE
+
+        good_form = body_angle_ok and body_slope_ok
+
+
+        # ---- STATE MACHINE ----
         if self.state == PushUpState.IDLE:
-            if self.elbow_angle < 85 and self.body_alignment > 150:
+            if self.elbow_angle < 140 and good_form:
                 self.state = PushUpState.DOWN
+
         elif self.state == PushUpState.DOWN:
-            if self.elbow_angle > 160:
+            if self.elbow_angle < 90 and good_form:
+                self.state = PushUpState.UP
+
+        elif self.state == PushUpState.UP:
+            if self.elbow_angle > 165 and good_form:
                 self.count += 1
                 self.state = PushUpState.IDLE
+                print(f"Push-ups: {self.count}")
+
     def draw(self, image, detection_result):
         annotated_image = image.copy()
         if not detection_result.pose_landmarks:
             return annotated_image
+
         h, w, _ = image.shape
 
         for pose_landmarks in detection_result.pose_landmarks:
             def to_pixel(lm):
                 return int(lm.x * w), int(lm.y * h)
-            
-            shoulder = to_pixel(pose_landmarks[RIGHT_SHOULDER])
-            elbow = to_pixel(pose_landmarks[RIGHT_ELBOW])
-            wrist = to_pixel(pose_landmarks[RIGHT_WRIST])
-            hip = to_pixel(pose_landmarks[RIGHT_HIP])
 
-            color = (0, 255, 0) if self.state == PushUpState.DOWN else (0, 0, 255)
-            
+            if self.side == "left":
+                shoulder = to_pixel(pose_landmarks[LEFT_SHOULDER])
+                elbow    = to_pixel(pose_landmarks[LEFT_ELBOW])
+                wrist    = to_pixel(pose_landmarks[LEFT_WRIST])
+                hip      = to_pixel(pose_landmarks[LEFT_HIP])
+                ankle    = to_pixel(pose_landmarks[LEFT_ANKLE])
+            else:
+                shoulder = to_pixel(pose_landmarks[RIGHT_SHOULDER])
+                elbow    = to_pixel(pose_landmarks[RIGHT_ELBOW])
+                wrist    = to_pixel(pose_landmarks[RIGHT_WRIST])
+                hip      = to_pixel(pose_landmarks[RIGHT_HIP])
+                ankle    = to_pixel(pose_landmarks[RIGHT_ANKLE])
 
-            cv2.line(annotated_image, shoulder, elbow, color, 4)
-            cv2.line(annotated_image, elbow, wrist, color, 4)
-            cv2.line(annotated_image, shoulder, hip, (255, 255, 0), 2)
+            body_parallel = abs(shoulder[1] - hip[1]) < 25
+            body_straight = self.body_angle > 165
+
+            color = (0, 255, 0) if body_parallel and body_straight else (0, 0, 255)
+
+            # Arm
+            cv2.line(annotated_image, shoulder, elbow, color, 2)
+            cv2.line(annotated_image, elbow, wrist, color, 2)
+
+            # Body
+            cv2.line(annotated_image, shoulder, hip, color, 2)
+            cv2.line(annotated_image, hip, ankle, color, 2)
+
+            # Debug
+            cv2.putText(
+                annotated_image,
+                f"Elbow: {int(self.elbow_angle)}  Body: {int(self.body_angle)}",
+                (30, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                color,
+                2
+            )
+
+        return annotated_image
+
+
+# =======================
+# V-PUSHUP TOLERANCE
+# =======================
+IDEAL_V_ANGLE = 95          # Ideal pike angle
+V_ANGLE_TOLERANCE = 25      # +- degrees allowed
+
+MIN_HIP_RISE = 25           # px
+HIP_RISE_TOLERANCE = 15     # px buffer
+
+MIN_ELBOW_DOWN = 90
+MAX_ELBOW_UP   = 165
+
+
+# =======================
+# STATES
+# =======================
+class VPushUpState:
+    IDLE = "IDLE"
+    DOWN = "DOWN"
+    UP   = "UP"
+
+
+# =======================
+# CONTROLLER
+# =======================
+class VPushUpController:
+    def __init__(self):
+        self.state = VPushUpState.IDLE
+        self.count = 0
+        self.elbow_angle = 0
+        self.body_angle = 0
+        self.side = None  # "left" or "right"
+
+    # -----------------------
+    # UPDATE (LOGIC)
+    # -----------------------
+    def update(self, detection_result, image_shape):
+        if not detection_result or not detection_result.pose_landmarks:
+            return
+
+        landmarks = detection_result.pose_landmarks[0]
+        pixel_landmarks = landmarks_to_pixels(landmarks, image_shape)
+
+        # ---- Choose best side ----
+        if self.side is None:
+            self.side = (
+                "left"
+                if landmarks[LEFT_ELBOW].visibility >
+                   landmarks[RIGHT_ELBOW].visibility
+                else "right"
+            )
+
+        if self.side == "left":
+            shoulder = pixel_landmarks[LEFT_SHOULDER]
+            elbow    = pixel_landmarks[LEFT_ELBOW]
+            wrist    = pixel_landmarks[LEFT_WRIST]
+            hip      = pixel_landmarks[LEFT_HIP]
+            ankle    = pixel_landmarks[LEFT_ANKLE]
+        else:
+            shoulder = pixel_landmarks[RIGHT_SHOULDER]
+            elbow    = pixel_landmarks[RIGHT_ELBOW]
+            wrist    = pixel_landmarks[RIGHT_WRIST]
+            hip      = pixel_landmarks[RIGHT_HIP]
+            ankle    = pixel_landmarks[RIGHT_ANKLE]
+
+        # ---- Angles ----
+        self.elbow_angle = angleBetweenLines(shoulder, elbow, wrist)
+        self.body_angle  = angleBetweenLines(shoulder, hip, ankle)
+
+        # ---- FORM CHECK (TOLERANT) ----
+        v_angle_ok = abs(self.body_angle - IDEAL_V_ANGLE) <= V_ANGLE_TOLERANCE
+        hips_high_ok = hip[1] <= shoulder[1] - (MIN_HIP_RISE - HIP_RISE_TOLERANCE)
+
+        good_form = v_angle_ok and hips_high_ok
+
+        # ---- STATE MACHINE ----
+        if self.state == VPushUpState.IDLE:
+            if self.elbow_angle < 140 and good_form:
+                self.state = VPushUpState.DOWN
+
+        elif self.state == VPushUpState.DOWN:
+            if self.elbow_angle < MIN_ELBOW_DOWN and good_form:
+                self.state = VPushUpState.UP
+
+        elif self.state == VPushUpState.UP:
+            if self.elbow_angle > MAX_ELBOW_UP and good_form:
+                self.count += 1
+                self.state = VPushUpState.IDLE
+                print(f"V Push-ups: {self.count}")
+
+    # -----------------------
+    # DRAW (VISUALS)
+    # -----------------------
+    def draw(self, image, detection_result):
+        annotated_image = image.copy()
+
+        if not detection_result or not detection_result.pose_landmarks:
+            return annotated_image
+
+        h, w, _ = image.shape
+
+        for pose_landmarks in detection_result.pose_landmarks:
+
+            def to_pixel(lm):
+                return int(lm.x * w), int(lm.y * h)
+
+            if self.side == "left":
+                shoulder = to_pixel(pose_landmarks[LEFT_SHOULDER])
+                elbow    = to_pixel(pose_landmarks[LEFT_ELBOW])
+                wrist    = to_pixel(pose_landmarks[LEFT_WRIST])
+                hip      = to_pixel(pose_landmarks[LEFT_HIP])
+                ankle    = to_pixel(pose_landmarks[LEFT_ANKLE])
+            else:
+                shoulder = to_pixel(pose_landmarks[RIGHT_SHOULDER])
+                elbow    = to_pixel(pose_landmarks[RIGHT_ELBOW])
+                wrist    = to_pixel(pose_landmarks[RIGHT_WRIST])
+                hip      = to_pixel(pose_landmarks[RIGHT_HIP])
+                ankle    = to_pixel(pose_landmarks[RIGHT_ANKLE])
+
+            # ---- FORM CHECK ----
+            v_angle_ok = abs(self.body_angle - IDEAL_V_ANGLE) <= V_ANGLE_TOLERANCE
+            hips_high_ok = hip[1] <= shoulder[1] - (MIN_HIP_RISE - HIP_RISE_TOLERANCE)
+
+            good_form = v_angle_ok and hips_high_ok
+
+            if good_form:
+                color = (0, 255, 0)      # Green
+            elif v_angle_ok or hips_high_ok:
+                color = (0, 255, 255)    # Yellow (close)
+            else:
+                color = (0, 0, 255)      # Red
+
+            # ---- ARM ----
+            cv2.line(annotated_image, shoulder, elbow, color, 2)
+            cv2.line(annotated_image, elbow, wrist, color, 2)
+
+            # ---- BODY ----
+            cv2.line(annotated_image, shoulder, hip, color, 2)
+            cv2.line(annotated_image, hip, ankle, color, 2)
+
+            # ---- DEBUG ----
+            cv2.putText(
+                annotated_image,
+                f"Elbow: {int(self.elbow_angle)}  Body: {int(self.body_angle)}",
+                (30, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                color,
+                2
+            )
+
         return annotated_image
 
 
@@ -652,44 +882,102 @@ lungeController = LungeController()
 runningController = RunningController()
 jumpingjacksController = JumpingJacksController()
 pushupController = PushUpController()
+vpushupController = VPushUpController()
 
-class ExerciseManager():
-    def __init__(self):
-        self.exercises={"squats": SquatController(), "situps" : SitUpController(), "lunges" : LungeController(), "running" : RunningController(), "jumpingjacks" : JumpingJacksController(), "pushups": PushUpController()}
-    
-        self.currentExercise="pushups"
+class ExerciseManager:
+
+    def __init__(self, today_exercises):
+
+        self.all_controllers = {
+            "squats": SquatController(),
+            "situps": SitUpController(),
+            "lunges": LungeController(),
+            "pushups" : PushUpController(),
+            "vpushups" : VPushUpController(),
+            "running" : RunningController(), 
+            "jumpingjacks" : JumpingJacksController()
+        }
+
+        self.exercises = {}
+
+        for ex in today_exercises:
+
+            clean = normalize_name(ex)
+
+            if clean in self.all_controllers:
+                self.exercises[clean] = self.all_controllers[clean]
+
+        self.currentExercise = (
+            list(self.exercises.keys())[0]
+            if self.exercises else None
+        )
+
+
     def getCurrentExercise(self):
+        if not self.currentExercise:
+            return None
         return self.exercises[self.currentExercise]
-    def setCurrentExercise(self,exerciseName):
-        self.currentExercise=exerciseName
+
+    def setCurrentExercise(self, name):
+        clean = normalize_name(name)
+        if clean in self.exercises:
+            self.currentExercise = clean
+
+##exerciseManager=exerciseManager()
+#exerciseManager = None
 
 
 
 
-@app.route('/switch_exercise',methods=["POST"])
+@app.route('/switch_exercise', methods=["POST"])
 def switch_exercise():
 
-    user_id = session.get('user_id')
-    if not user_id in loggedInUsers:
-        return
-    currentUser= loggedInUsers[user_id]
+    user_id = session.get("user_id")
+
+    if not user_id or user_id not in loggedInUsers:
+        return jsonify(error="User not active")
+
+    currentUser = loggedInUsers[user_id]
+
+    if not currentUser.exerciseManager:
+        return jsonify(error="No active workout")
+
     data = request.get_json()
     new_exercise = data.get('exercise')
+
     currentUser.exerciseManager.setCurrentExercise(new_exercise)
+
     return jsonify(status="success", now_doing=new_exercise)
 
 @app.route('/get_exercise_data')
 def get_exercise_data():
-    user_id = session.get('user_id')
-    if not user_id in loggedInUsers:
-        return
-    currentUser= loggedInUsers[user_id]
 
-    currentExerciseObject=currentUser.exerciseManager.getCurrentExercise()
+    user_id = session.get("user_id")
+
+    if not user_id or user_id not in loggedInUsers:
+        return jsonify(error="User not active")
+
+    currentUser = loggedInUsers[user_id]
+
+    if not currentUser.exerciseManager:
+        return jsonify(error="No active workout")
+
+    multiple_detected = False
+
+    if currentUser.latest_detection and currentUser.latest_detection.pose_landmarks:
+        if len(currentUser.latest_detection.pose_landmarks) > 1:
+            multiple_detected = True
+
+    currentExercise = currentUser.exerciseManager.getCurrentExercise()
+
+    if not currentExercise:
+        return jsonify(error="No exercise loaded")
+
     return jsonify(
         currentExercise=currentUser.exerciseManager.currentExercise,
-        count=currentExerciseObject.count,
-        state=currentExerciseObject.state,
+        count=currentExercise.count,
+        state=currentExercise.state,
+        multiple_detected=multiple_detected
     )
 
 
@@ -719,6 +1007,170 @@ def generate_frames(user_id):
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+#------------------
+#Workout
+#---------------
+
+all_selected_exercises = {}
+
+# ---------------- EXERCISES ----------------
+
+##upper_body = ["Push-ups", "V pushups", "Inverted Rows", "Pull-ups"]
+upper_body = ["Push-ups", "V pushups"]
+##lower_body = ["squats", "lunges", "Glute Bridges", "Calf Raises"]
+lower_body = ["squats", "lunges"]
+core = ["Sit-ups", "Supermans"]
+time_core = ["Plank"] 
+cardio = ["Jumping Jacks", "Jogging in Place", "Running", "Jump Rope", "Burpees"]
+
+push_day = ["Push-ups", "V pushups"]
+leg_day = ["Squats", "Lunges", "Calf Raises"]
+
+new_people_exercises = [
+    "Glute Bridges", "Jogging in Place", "Jumping Jacks",
+    "Lunges", "Push-ups", "Sit-ups", "Squats", "Supermans"
+]
+
+# ---------------- REPS ----------------
+
+rep_ranges = {
+    "Beginner": {
+        "strength": "3 x 12 reps",
+        "core": "3 x 12 reps", 
+        "long core": "1:30 min",
+        "cardio": "45 seconds"
+    }
+}
+
+# ---------------- HELPERS ----------------
+
+def pick_random(ex_list, num):
+    return random.sample(ex_list, k=min(num, len(ex_list)))
+
+def normalize_name(name):
+    return name.lower().replace("-", "").replace(" ", "")
+
+def format_exercise(ex, category, day_key):
+    rows = ""
+    for _, reps in rep_ranges.items():
+        all_selected_exercises[day_key].append([ex, category, reps[category]])
+        rows += f"{ex:<20} | {category:<10} | {reps[category]}\n"
+    return rows
+
+
+# ---------------- GENERATE PLAN ----------------
+
+def generate_workout_plan(goal, days_per_week, body_part):
+
+    all_selected_exercises.clear()
+    plan = f"Goal: {goal}\nWorkouts per Week: {days_per_week}\n\n"
+
+    mode = {
+        "get fit": "balanced",
+        "lose weight": "cardio",
+        "gain strength": "strength"
+    }.get(goal, "balanced")
+
+    body_map = {
+        "legs": lower_body,
+        "arms": upper_body,
+        "abdomen": core
+    }
+
+    focus = body_map.get(body_part, upper_body)
+
+    for day in range(1, days_per_week + 1):
+
+        day_key = f"day_{day}"
+        all_selected_exercises[day_key] = []
+        plan += f"DAY {day}\n"
+
+        if mode == "cardio":
+            for ex in pick_random(cardio, 2):
+                plan += format_exercise(ex, "cardio", day_key)
+            for ex in pick_random(focus, 2):
+                plan += format_exercise(ex, "strength", day_key)
+
+        else:
+            for ex in pick_random(focus, 2):
+                plan += format_exercise(ex, "strength", day_key)
+            plan += format_exercise(random.choice(cardio), "cardio", day_key)
+
+        plan += "\n"
+
+    return plan
+
+
+
+def get_user_exercises(username):
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT goal_other, workouts_per_week
+        FROM UserLogins
+        WHERE username = ?
+    """, (username,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return [], 0
+
+    exercises = json.loads(row["goal_other"])
+
+    return exercises, row["workouts_per_week"]
+
+def get_weekly_workouts(username):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT goal_other, workouts_per_week
+        FROM UserLogins
+        WHERE username=?
+    """, (username,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return {}
+
+    workouts = json.loads(row["goal_other"])
+    days_per_week = row["workouts_per_week"]
+
+    week = {}
+
+    for i in range(1, 8):  # Mon–Sun
+        key = f"day_{i}"
+        week[key] = [ex[0] for ex in workouts.get(key, [])]
+
+    return week
+
+def get_today_exercises(username, day_number=1):
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT goal_other FROM UserLogins WHERE username=?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return []
+
+    workouts = json.loads(row["goal_other"])
+    day_key = f"day_{day_number}"
+
+    if day_key not in workouts:
+        return []
+
+    return [ex[0] for ex in workouts[day_key]]
+
+
 
 # -------------------------
 # Login
@@ -777,7 +1229,8 @@ def register():
         password = generate_password_hash(request.form['password'])
 
         goal = request.form.get('goal')
-        goal_other = request.form.get('goal_other') if goal == 'other' else None
+        workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+        goal_other = json.dumps(all_selected_exercises)
         workouts_per_week = request.form.get('workouts_per_week')
         body_part = request.form.get('body_part')
 
@@ -812,27 +1265,40 @@ def register():
 # -------------------------
 @app.route('/home')
 def home():
-    if 'username' not in session:
-        return redirect(url_for('login'))
+    username = session.get('username')
+
+    weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
-        'home.html',
-        username=session['username'],
-        points=120,
-        goal_percent=62
+        "home.html",
+        username=username,
+        weekly_workouts=weekly_workouts,
+        goal_percent=75,
+        points=120
     )
 
 
 @app.route('/workoutSession')
 def workoutSession():
-    squat_count=0
-    knee_angle=0
 
-    return render_template("workoutSession.html",squat_count=squat_count,knee_angle=knee_angle)
+    
+    if "username" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+
+    today_exercises = get_today_exercises(session["username"], 1)
+    if not today_exercises:
+        today_exercises = ["squats"]
+
+    loggedInUsers[user_id].exerciseManager = ExerciseManager(today_exercises)
+
+    return render_template("workoutSession.html", exercises=today_exercises)
 
 @app.route('/workoutcomplete')
 def workoutcomplete():
 
+    if "username" not in session:
+        return redirect(url_for("login"))
 
     return render_template("workoutcomplete.html")
 
@@ -868,4 +1334,3 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
