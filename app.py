@@ -1175,7 +1175,7 @@ def get_today_exercises(username, day_number=1):
 # -------------------------
 # Login
 # -------------------------
-
+@app.route('/reset_stats', methods=['POST'])
 def reset_stats():
     user_id = session.get('user_id')
     if user_id not in loggedInUsers:
