@@ -380,18 +380,15 @@ function normalizeName(name) {
 
 function moveToNextExercise() {
 
-    if (isSwitching) return;
-    isSwitching = true;
-
     clearInterval(timerInterval);
-    timerInterval = null;
-
-    routineIndex++;
-    lastCount = 0;
-    document.getElementById('rep_count').innerText = "0";
 
     fetch('/reset_stats', { method: 'POST' })
         .then(() => {
+
+            routineIndex++;
+
+            lastCount = 0;
+            document.getElementById('rep_count').innerText = "0";
 
             if (routineIndex >= workoutRoutine.length) {
                 workoutFinished = true;
@@ -401,20 +398,21 @@ function moveToNextExercise() {
 
             const next = workoutRoutine[routineIndex];
 
-            // WAIT for backend to switch
             changeExercise(next.name).then(() => {
 
                 applyExerciseUIMode(next);
 
                 if (next.type === 'timer') {
                     startTimer(next.duration);
+                } else {
+                    
+                    if (statsInterval) clearInterval(statsInterval);
+                    statsInterval = setInterval(updateStats, 500);
                 }
 
+                isSwitching = false;
             });
-
         });
-
-    setTimeout(() => isSwitching = false, 800);
 }
 
 /* ---------------- UPDATE STATS ---------------- */
@@ -506,6 +504,7 @@ console.log("Workout Routine:", workoutRoutine);
 </script>
 
 </html>
+
 
 
 
