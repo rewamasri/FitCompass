@@ -278,6 +278,7 @@ const gifMap = {
   situps: "{{ url_for('static', filename='situps.gif') }}",
   jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
   pushups: "{{ url_for('static', filename='pushups.gif') }}",
+  glutebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
   running: "{{ url_for('static', filename='running.gif') }}"
 };
 
@@ -449,8 +450,12 @@ function updateStats() {
             }
 
             if (data.count >= current.target) {
+
+                clearInterval(statsInterval);  
+                statsInterval = null;
                 moveToNextExercise();
             }
+
         });
 }
 
@@ -501,6 +506,7 @@ console.log("Workout Routine:", workoutRoutine);
 </script>
 
 </html>
+
 
 
 
