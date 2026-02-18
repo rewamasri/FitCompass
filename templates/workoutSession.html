@@ -182,6 +182,29 @@
         transform: scaleX(-1); /* Keep your mirror effect */
     }
 
+    .avatar-container {
+        position: fixed;
+        bottom: 20px;   
+        right: 20px;     
+        width: 180px; 
+        height: 290px; 
+        z-index: 100; 
+    }
+
+    .avatar-part {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; 
+    }
+
+    .base  { z-index: 1; }
+    .torso { z-index: 2; }
+    .head  { z-index: 5; }
+    .arms  { z-index: 4; }
+
     /*workout progress bar*/
     .total-rep-bar{
       width: 100%;
@@ -244,8 +267,17 @@
         <h1 id="current_state">state</h1>
         </div>
 
-      <div class="camera-box">   
-             <img src="{{ url_for('webcam_feed') }}">
+      <div style="display: flex; gap: 20px; align-items: center;">
+          <div class="camera-box">   
+                 <img src="{{ url_for('webcam_feed') }}">
+          </div>
+          
+        <div class="avatar-container">
+          <img src="{{ url_for('static', filename='michalis/template.png') }}" class="avatar-part base" alt="base">
+          <img src="{{ url_for('static', filename='michalis/torso-buttonup.png') }}" class="avatar-part torso" alt="shirt">
+          <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" class="avatar-part head" alt="head">
+          <img src="{{ url_for('static', filename='michalis/arms-low-buttonup.png') }}" class="avatar-part arms" id="avatar-arms" alt="arms">
+        </div>
       </div>
          <div id="overlay">
         <button class="btn" onclick="startSession()">start camera feed!</button>
