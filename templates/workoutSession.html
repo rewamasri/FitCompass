@@ -280,6 +280,7 @@ const gifMap = {
   situps: "{{ url_for('static', filename='situps.gif') }}",
   jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
   pushups: "{{ url_for('static', filename='pushup.gif') }}",
+  vpushups: "{{ url_for('static', filename='vpushup.gif') }}",
   glutebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
   running: "{{ url_for('static', filename='running.gif') }}"
 };
@@ -407,9 +408,13 @@ function moveToNextExercise() {
 
                 if (next.type === 'timer') {
                     startTimer(next.duration);
+                } else {
+                    // ✅ RESTART POLLING FOR REPS
+                    if (statsInterval) clearInterval(statsInterval);
+                    statsInterval = setInterval(updateStats, 500);
                 }
 
-                isSwitching = false;  // unlock AFTER full switch
+                isSwitching = false;
             });
         });
 }
