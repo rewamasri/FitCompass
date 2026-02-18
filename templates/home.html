@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FitCompass - Home</title>
 
+
   <style>
-    /*main colors and formatting*/
     :root{
       --bg-main:#1f4d69;
       --bg-sidebar:#d8eff4;
@@ -19,8 +19,10 @@
       --font:ui-monospace, Menlo, Consolas, monospace;
     }
 
+
     *{ box-sizing:border-box; }
-    /*CSS for body of page*/
+
+
     body{
       margin:0;
       font-family:var(--font);
@@ -29,68 +31,57 @@
       min-height:100vh;
     }
 
+
     .app{ display:flex; min-height:100vh; }
+
 
     /* Sidebar */
     .sidebar{
-      width: 260px;
-      background: var(--bg-sidebar);
-      color: var(--text-dark);
-      display: flex;
-      flex-direction: column;
-      padding: 18px 14px;
-      gap: 12px;
-      border-right: 3px solid rgba(0,0,0,.08);
+      width:260px;
+      background:var(--bg-sidebar);
+      color:var(--text-dark);
+      display:flex;
+      flex-direction:column;
+      padding:18px 14px;
+      border-right:3px solid rgba(0,0,0,.08);
     }
+
 
     .sidebar-title{
-      font-size: 20px;
-      margin: 6px 8px 8px;
-      letter-spacing: .5px;
-      opacity: .85;
+      font-size:20px;
+      margin-bottom:10px;
     }
+
 
     .nav{
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 0 6px;
-      flex: 1;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      flex:1;
     }
+
 
     .nav button{
-      width: 100%;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 14px;
-      background: white;
-      color: var(--text-dark);
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 16px;
-      text-align: left;
-      box-shadow: 0 4px 10px rgba(0,0,0,.08);
-      transition: transform .06s ease, filter .12s ease;
+      border:none;
+      border-radius:10px;
+      padding:12px;
+      background:white;
+      font-family:var(--font);
+      cursor:pointer;
+      text-align:left;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
     }
-    .nav button:hover{ filter: brightness(.98); }
-    .nav button:active{ transform: translateY(1px); }
 
-    .logout{
-      margin-top: auto;
-      padding: 0 6px 8px;
-    }
+
     .logout button{
-      width: 100%;
-      border: none;
-      border-radius: 10px;
-      padding: 14px 14px;
-      background: var(--btn-red);
-      color: #1a0b0d;
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 18px;
-      box-shadow: 0 8px 18px rgba(0,0,0,.18);
+      border:none;
+      border-radius:10px;
+      padding:14px;
+      background:var(--btn-red);
+      font-family:var(--font);
+      cursor:pointer;
     }
+
 
     /* Main */
     .main{
@@ -99,20 +90,22 @@
       padding:22px;
     }
 
+
     .banner{
       background:rgba(255,255,255,.12);
       padding:14px;
       border-radius:12px;
-      margin-bottom:18px;
+      margin-bottom:20px;
     }
+
 
     .top-row{
       display:flex;
       justify-content:space-between;
       align-items:center;
-      margin-bottom:28px;
-      gap:16px;
+      margin-bottom:30px;
     }
+
 
     .progress{
       background:white;
@@ -122,72 +115,84 @@
       overflow:hidden;
     }
 
+
     .progress-fill{
       height:100%;
       background:var(--btn-green);
+      color:black;
+      font-weight:bold;
       display:flex;
       align-items:center;
       padding-left:10px;
-      color:#000;
-      font-weight:bold;
     }
+
 
     .points{
       background:var(--btn-green);
       padding:10px 16px;
       border-radius:10px;
       font-size:18px;
+      color:black;
     }
 
-    /* Center content */
+
     .center{
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 28px;
-      padding-top: 10px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:20px;
     }
 
-    /* Smaller logo */
+
     .logo-box{
-      width: 180px;
-      height: 180px;
-      background: rgba(0, 0, 0, .18);
-      border: 2px solid rgba(255,255,255,.12);
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      box-shadow: var(--shadow);
-      padding: 10px;
-    }
-    .logo-box .logo-text{
-      text-align: center;
-      line-height: 1.05;
-    }
-    .logo-box .logo-text .brand{
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: .8px;
-    }
-    .logo-box .logo-text .tagline{
-      font-size: 10px;
-      opacity: .8;
-      margin-top: 6px;
+      width:180px;
+      height:180px;
+      background:rgba(0,0,0,.18);
+      border-radius:12px;
+      display:grid;
+      place-items:center;
     }
 
-    /* Recommended workout card */
+
+    /* Day buttons */
+    .day-buttons{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+
+
+    .day-buttons button{
+      background:white;
+      border:none;
+      border-radius:8px;
+      padding:10px 14px;
+      font-family:var(--font);
+      cursor:pointer;
+      box-shadow:0 4px 10px rgba(0,0,0,.1);
+    }
+
+
+    .day-buttons button.active{
+      background:var(--btn-green);
+      font-weight:bold;
+    }
+
+
+    /* Workout card */
     .card{
       background:var(--card);
       width:70%;
-      height:260px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      min-height:240px;
       border-radius:12px;
-      font-size:28px;
-      color:#000;
+      padding:16px;
+      color:black;
       box-shadow:var(--shadow);
+      overflow-y:auto;
+      white-space:pre-wrap;
     }
+
 
     .start-btn{
       background:var(--btn-green);
@@ -200,32 +205,39 @@
   </style>
 </head>
 
+
 <body>
 <div class="app">
+
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-title">FitCompass</div>
 
+
     <div class="nav">
-      <button onclick="location.href='{{ url_for('profile') }}'">profile</button>
-      <button onclick="location.href='{{ url_for('history') }}'">history</button>
-      <button onclick="location.href='{{ url_for('library') }}'">library</button>
-      <button onclick="location.href='{{ url_for('shop') }}'">shop</button>
-      <button onclick="location.href='{{ url_for('settings') }}'">settings</button>
+      <button onclick="location.href='{{ url_for('profile') }}'">Profile</button>
+      <button onclick="location.href='{{ url_for('history') }}'">History</button>
+      <button onclick="location.href='{{ url_for('library') }}'">Library</button>
+      <button onclick="location.href='{{ url_for('shop') }}'">Shop</button>
+      <button onclick="location.href='{{ url_for('settings') }}'">Settings</button>
     </div>
 
+
     <div class="logout">
-      <button onclick="location.href='{{ url_for('logout') }}'">log out</button>
+      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
     </div>
   </aside>
+
 
   <!-- MAIN -->
   <main class="main">
 
+
     <div class="banner">
       <strong>Welcome, {{ username }}!</strong> Let’s get moving.
     </div>
+
 
     <div class="top-row">
       <div class="progress">
@@ -234,28 +246,97 @@
         </div>
       </div>
 
+
       <div class="points">
-        points: {{ points }}
+        Points: {{ points }}
       </div>
     </div>
 
+
     <section class="center">
 
-      <div class="logo-box" aria-label="FitCompass logo">
-          <div class="logo-text">
-            <img src="static/logo.png" alt="FitCompass logo" style="max-width:100%; max-height:50%;" />
-          </div>
-        </div>
 
-      <div class="card">
-        Recommended Workout
+      <!-- LOGO -->
+      <div class="logo-box">
+        <img src="{{ url_for('static', filename='logo.png') }}"
+             style="max-width:100%; max-height:50%;" />
       </div>
 
-      <button onclick="location.href='{{ url_for('workoutSession') }}'" class="start-btn">
-        START</button>
-    </section>
 
+      <!-- DAY BUTTONS -->
+      <div class="day-buttons">
+        {% set days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+        {% for i in range(1,8) %}
+          <button onclick="showWorkout({{ i }})">{{ days[i-1] }}</button>
+        {% endfor %}
+      </div>
+
+
+      <!-- WORKOUT CARD -->
+      <div class="card">
+        <strong id="day-title">Select a Day</strong>
+        <hr>
+        <div id="workout-content">
+          Click a day to view your workout.
+        </div>
+      </div>
+
+
+      <!-- START BUTTON -->
+      <button
+        onclick="location.href='{{ url_for('workoutSession') }}'"
+        class="start-btn"
+        id="startBtn">
+        START
+      </button>
+
+
+    </section>
   </main>
 </div>
+
+
+<script>
+  const weeklyWorkouts = {{ weekly_workouts | tojson }};
+
+
+  const dayNames = {
+    1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",
+    5:"Friday",6:"Saturday",7:"Sunday"
+  };
+
+
+  function showWorkout(day){
+    const title = document.getElementById("day-title");
+    const content = document.getElementById("workout-content");
+    const startBtn = document.getElementById("startBtn");
+
+
+    document.querySelectorAll(".day-buttons button")
+      .forEach(b => b.classList.remove("active"));
+    event.target.classList.add("active");
+
+
+    title.textContent = `${dayNames[day]} Workout`;
+
+
+    const exercises = weeklyWorkouts[`day_${day}`];
+
+
+    if(exercises && exercises.length > 0){
+      content.innerHTML = exercises.map(e => `• ${e}`).join("<br>");
+      startBtn.disabled = false;
+      startBtn.style.opacity = "1";
+    } else {
+      content.innerHTML = "Rest Day <br>Recovery, stretching, or light walking recommended.";
+      startBtn.disabled = true;
+      startBtn.style.opacity = ".5";
+    }
+  }
+</script>
+
+
 </body>
 </html>
+
+
