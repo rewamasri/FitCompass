@@ -267,248 +267,193 @@
     <button onclick="changeWorkout('lunges')">count lunges</button> -->
   </main>
 
-       <script>
-const ding = new Audio("{{ url_for('static', filename='repding.mp3') }}");
+    <script>
+        const ding=new Audio("{{url_for('static', filename='repding.mp3')}}");
 
-/* ---------------- GIF MAP ---------------- */
+        const workoutRoutine=[{name: 'jumpingjacks',type: 'timer', duration: 30},
+                              {name: 'running', type: 'timer', duration: 30},
+                              {name: 'squats', target: 2},
+                              {name: 'lunges', target: 2},
+                            ]
 
-const gifMap = {
-  squats: "{{ url_for('static', filename='squats.gif') }}",
-  lunges: "{{ url_for('static', filename='lunges.gif') }}",
-  situps: "{{ url_for('static', filename='situps.gif') }}",
-  jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
-  pushups: "{{ url_for('static', filename='pushups.gif') }}",
-  vpushups: "{{ url_for('static', filename='vpushup.gif') }}",
-  glutebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
-  running: "{{ url_for('static', filename='running.gif') }}"
-};
+        repsCompleted = 0; //this is reps completed across all workouts
+        const totalReps=4;
 
-/* ---------------- WORKOUT ROUTINE ---------------- */
+        let lastCount=0;
+        let routineIndex=0;
+        let workoutFinished=false
+        let isSwitching = false; // ai lock 
+        const bar = document.getElementById("total-rep-percentage");
+        let timerInterval = null;
+        let remainingTime = 0;
+        let statsInterval = null;
 
-const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
-    .map(ex => {
+        function changeExercise(name) {
+            document.getElementById('exercise_name').innerText=name;
+            if (gifMap[name]) {
+                document.getElementById('exercise_gif').src = gifMap[name];
+            }
 
-        const name = ex.toLowerCase(); // normalize
-
-        if (["jumping jacks", "running", "burpees"].includes(name)) {
-            return { name: name, type: "timer", duration: 30 };
+            return fetch('/switch_exercise', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ exercise: name })
+            });
         }
 
-        return { name: name, type: "reps", target: 3 };
-    });
-
-/* ---------------- STATE ---------------- */
-
-let routineIndex = 0;
-let workoutFinished = false;
-let isSwitching = false;
-
-let lastCount = 0;
-let repsCompleted = 0;
-
-let timerInterval = null;
-let remainingTime = 0;
-let statsInterval = null;
-
-const totalReps = workoutRoutine
-    .filter(ex => ex.type === "reps")
-    .reduce((sum, ex) => sum + ex.target, 0);
-
-const bar = document.getElementById("total-rep-percentage");
-
-/* ---------------- CHANGE EXERCISE ---------------- */
-
-function changeExercise(name) {
-
-    const normalized = normalizeName(name);
-
-    document.getElementById('exercise_name').innerText = name;
-
-    if (gifMap[normalized]) {
-        document.getElementById('exercise_gif').src = gifMap[normalized];
-    }
-
-    return fetch('/switch_exercise', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exercise: normalized })
-    });
-}
-
-/* ---------------- APPLY UI MODE ---------------- */
-
-function applyExerciseUIMode(ex) {
-    if (ex.type === 'timer') {
-        document.getElementById('timer_card').style.display = 'block';
-        document.getElementById('reps_card').style.display = 'none';
-        document.getElementById('current_state').innerText = "TIMER";
-    } else {
-        document.getElementById('timer_card').style.display = 'none';
-        document.getElementById('reps_card').style.display = 'block';
-    }
-}
-
-/* ---------------- TIMER ---------------- */
-
-function startTimer(seconds) {
-
-    clearInterval(timerInterval);
-    remainingTime = seconds;
-
-    document.getElementById('timer_display').innerText = remainingTime;
-
-    timerInterval = setInterval(() => {
-        remainingTime--;
-        document.getElementById('timer_display').innerText = remainingTime;
-
-        if (remainingTime <= 0) {
+        function startTimer(seconds) {
             clearInterval(timerInterval);
-            timerInterval = null;
-            moveToNextExercise();
+            remainingTime = seconds;
+
+            document.getElementById('timer_card').style.display = 'block';
+            document.getElementById('reps_card').style.display = 'none';
+            document.getElementById('timer_display').innerText = remainingTime;
+
+            document.getElementById('current_state').innerText = "TIMER";
+
+            timerInterval = setInterval(() => {
+                remainingTime--;
+                document.getElementById('timer_display').innerText = remainingTime;
+
+                if (remainingTime <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('timer_card').style.display = 'none';
+                    moveToNextExercise();
+                }
+            }, 1000);
         }
-       
-    }, 1000);
-    
-    fetch('/reset_stats', { method: 'POST' }).catch(()=>{});
-}
+        
+        function applyExerciseUIMode(ex) {
+            if (ex.type === 'timer') {
+                document.getElementById('timer_card').style.display = 'block';
+                document.getElementById('reps_card').style.display = 'none';
+            } else {
+                clearInterval(timerInterval); 
+                timerInterval = null;
+                document.getElementById('timer_card').style.display = 'none';
+                document.getElementById('reps_card').style.display = 'block';
+            }
+        }
 
-/* ---------------- NEXT EXERCISE ---------------- */
-
-function normalizeName(name) {
-    return name.toLowerCase().replace(/[\s-]/g, "");
-}
-
-
-function moveToNextExercise() {
-
-    clearInterval(timerInterval);
-
-    fetch('/reset_stats', { method: 'POST' })
-        .then(() => {
-
-            routineIndex++;
-
-            lastCount = 0;
+        function moveToNextExercise() {
+            if (isSwitching) return;
+            isSwitching = true;
             document.getElementById('rep_count').innerText = "0";
 
-            if (routineIndex >= workoutRoutine.length) {
-                workoutFinished = true;
-                window.location.href = "{{ url_for('workoutcomplete') }}";
-                return;
+            routineIndex++;
+            fetch('/reset_stats', { method: 'POST' })
+                .then(() => {
+                    if (routineIndex < workoutRoutine.length) {
+                        const nextExercise = workoutRoutine[routineIndex].name;
+                        lastCount=0;
+                       
+                        changeExercise(nextExercise);
+                    } else {
+                        workoutFinished = true;
+                        repsCompleted=0;
+                        window.location.href = "{{ url_for('workoutcomplete') }}";
+                    }
+                });
+
+            clearInterval(timerInterval);
+            timerInterval = null;
+            
+            // 1. Reset the UI immediately for the user
+            document.getElementById('rep_count').innerText = "0";
+            document.getElementById('timer_display').innerText = "30";
+
+            if(routineIndex < workoutRoutine.length){
+              const nextExercise = workoutRoutine[routineIndex];
+              changeExercise(nextExercise.name);
+              applyExerciseUIMode(nextExercise);
+              if(nextExercise.type === 'timer'){
+                startTimer(nextExercise.duration);
+              }else{
+                fetch('/reset_stats', { method: 'POST' }).catch(()=>{});
+              }
+            }else{
+              workoutFinished = true;
+              window.location.href = "{{ url_for('workoutcomplete') }}";
             }
+            setTimeout(() => { isSwitching = false; }, 1000);
+        }
 
-            const next = workoutRoutine[routineIndex];
+        function updateStats() {
+            const current = workoutRoutine[routineIndex];
 
-            changeExercise(next.name).then(() => {
+            if (current.type === 'timer')return;
+            
+            fetch('/get_exercise_data')
+                .then(response => response.json())
+                .then(data => {
 
-                applyExerciseUIMode(next);
-
-                if (next.type === 'timer') {
-                    startTimer(next.duration);
-                } else {
+                    document.getElementById('rep_count').innerText = data.count;
+                    document.getElementById('current_state').innerText = data.state;
                     
-                    if (statsInterval) clearInterval(statsInterval);
-                    statsInterval = setInterval(updateStats, 500);
-                }
+                    const goalCount= workoutRoutine[routineIndex].target
 
-                isSwitching = false;
-            });
-        });
-}
+                    bar.style.width = (repsCompleted/totalReps) *100+ "%";
+                    bar.textContent = (repsCompleted/totalReps)*100 + "%";
+                    if(lastCount<data.count){
+                      const diff = data.count - lastCount;  // how many reps actually increased
+  
+                      lastCount=data.count;
+                      repsCompleted += diff;
+                      ding.play();
+                    }
 
-/* ---------------- UPDATE STATS ---------------- */
-
-function updateStats() {
-
-    if (workoutFinished) return;
-
-    const current = workoutRoutine[routineIndex];
-
-    // Skip timer exercises if (!current || current.type !== "time") return;
-    if (!current || current.type !== "reps") return;
-
-
-    fetch('/get_exercise_data')
-        .then(res => res.json())
-        .then(data => {
-
-            document.getElementById('rep_count').innerText = data.count;
-            document.getElementById('current_state').innerText = data.state;
-
-            if (data.count > lastCount) {
-                const diff = data.count - lastCount;
-                repsCompleted += diff;
-                lastCount = data.count;
-                ding.play();
-            }
-
-            if (totalReps > 0) {
-                const percent = Math.round((repsCompleted / totalReps) * 100);
-                bar.style.width = percent + "%";
-                bar.textContent = percent + "%";
-            }
-
-            if (data.count >= current.target) {
-
-                clearInterval(statsInterval);  
-                statsInterval = null;
-                moveToNextExercise();
-            }
-
-        });
-}
-
-/* ---------------- START SESSION ---------------- */
-
-function startSession() {
-
-    document.getElementById("overlay").style.display = 'none';
-
-    ding.play().then(() => {
+                    if(data.count>=goalCount){
+                        moveToNextExercise()
+                    }
+                })
+        }
+       
+    function startSession(){
+      document.getElementById("overlay").style.display='none';
+      ding.play().then(() => {
         ding.pause();
         ding.currentTime = 0;
-    }).catch(()=>{});
+      }).catch(error => console.log("Audio primed"));
+      const cameraImg = document.querySelector('.camera-box img');
+      cameraImg.style.display = 'block';
+      document.querySelector('.exercise-preview').style.display = 'block';
+      const first = workoutRoutine[0];
+          changeExercise(first.name);
+          applyExerciseUIMode(first);
 
-    document.querySelector('.camera-box img').style.display = 'block';
-    document.querySelector('.exercise-preview').style.display = 'block';
-    //loads first gif
-    const first = workoutRoutine[0];
-
-    changeExercise(first.name);
-    applyExerciseUIMode(first);
-
-    if (first.type === 'timer') {
-        startTimer(first.duration);
+          if (first.type === 'timer') {
+              startTimer(first.duration);
+          } else {
+              fetch('/reset_stats', { method: 'POST' }).catch(()=>{});
+          }
+          if (statsInterval) clearInterval(statsInterval);
+          setInterval(updateStats, 500);
     }
 
-    if (statsInterval) clearInterval(statsInterval);
-    statsInterval = setInterval(updateStats, 500);
-}
+        
 
-/* ---------------- INIT ---------------- */
+        window.onload = () => {
+          repsCompleted = 0;
+          lastCount = 0;
+          routineIndex = 0;
+          workoutFinished = false;
 
-window.onload = () => {
+          bar.style.width = "0%";
+          bar.textContent = "0%";
+          document.getElementById('rep_count').innerText = "0";
+        };
 
-    repsCompleted = 0;
-    lastCount = 0;
-    routineIndex = 0;
-    workoutFinished = false;
+    const gifMap = {
+      squats: "{{ url_for('static', filename='squats.gif') }}",
+      lunges: "{{ url_for('static', filename='lunges.gif') }}",
+      situps: "{{ url_for('static', filename='situps.gif') }}",
+      gluebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
+      jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
+      pushup: "{{ url_for('static', filename='pushup.gif') }}",
+      supermans: "{{ url_for('static', filename='supermans.gif') }}",
+      running: "{{ url_for('static', filename='running.gif') }}",
+    };
 
-    bar.style.width = "0%";
-    bar.textContent = "0%";
-
-    if (workoutRoutine.length > 0) {
-        changeExercise(workoutRoutine[0].name);
-    }
-};
-console.log("Workout Routine:", workoutRoutine);
-</script>
+  </script>
 
 </html>
-
-
-
-
-
-
-
