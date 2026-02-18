@@ -720,10 +720,174 @@ def generate_frames(user_id):
         yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
+#------------------
+#Workout
+#---------------
+
+all_selected_exercises = {}
+
+# ---------------- EXERCISES ----------------
+
+##upper_body = ["Push-ups", "V pushups", "Inverted Rows", "Pull-ups"]
+upper_body = ["Push-ups", "V pushups"]
+##lower_body = ["squats", "lunges", "Glute Bridges", "Calf Raises"]
+lower_body = ["squats", "lunges"]
+core = ["Sit-ups", "Supermans"]
+time_core = ["Plank"] 
+cardio = ["Jumping Jacks",  "Running"]
+
+push_day = ["Push-ups", "V pushups"]
+leg_day = ["Squats", "Lunges" ]
+
+new_people_exercises = [
+    "Glute Bridges", "Running", "Jumping Jacks",
+    "Lunges", "Push-ups", "Sit-ups", "Squats", "Supermans"
+]
+
+# ---------------- REPS ----------------
+
+rep_ranges = {
+    "Beginner": {
+        "strength": "3 x 12 reps",
+        "core": "3 x 12 reps", 
+        "long core": "1:30 min",
+        "cardio": "45 seconds"
+    }
+}
+
+# ---------------- HELPERS ----------------
+
+def pick_random(ex_list, num):
+    return random.sample(ex_list, k=min(num, len(ex_list)))
+
+def normalize_name(name):
+    return name.lower().replace("-", "").replace(" ", "")
+
+def format_exercise(ex, category, day_key):
+    rows = ""
+    for _, reps in rep_ranges.items():
+        all_selected_exercises[day_key].append([ex, category, reps[category]])
+        rows += f"{ex:<20} | {category:<10} | {reps[category]}\n"
+    return rows
+
+
+# ---------------- GENERATE PLAN ----------------
+
+def generate_workout_plan(goal, days_per_week, body_part):
+
+    all_selected_exercises.clear()
+    plan = f"Goal: {goal}\nWorkouts per Week: {days_per_week}\n\n"
+
+    mode = {
+        "get fit": "balanced",
+        "lose weight": "cardio",
+        "gain strength": "strength"
+    }.get(goal, "balanced")
+
+    body_map = {
+        "legs": lower_body,
+        "arms": upper_body,
+        "abdomen": core
+    }
+
+    focus = body_map.get(body_part, upper_body)
+
+    for day in range(1, days_per_week + 1):
+
+        day_key = f"day_{day}"
+        all_selected_exercises[day_key] = []
+        plan += f"DAY {day}\n"
+
+        if mode == "cardio":
+            for ex in pick_random(cardio, 2):
+                plan += format_exercise(ex, "cardio", day_key)
+            for ex in pick_random(focus, 2):
+                plan += format_exercise(ex, "strength", day_key)
+
+        else:
+            for ex in pick_random(focus, 2):
+                plan += format_exercise(ex, "strength", day_key)
+            plan += format_exercise(random.choice(cardio), "cardio", day_key)
+
+        plan += "\n"
+
+    return plan
+
+
+
+def get_user_exercises(username):
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT goal_other, workouts_per_week
+        FROM UserLogins
+        WHERE username = ?
+    """, (username,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return [], 0
+
+    exercises = json.loads(row["goal_other"])
+
+    return exercises, row["workouts_per_week"]
+
+def get_weekly_workouts(username):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT goal_other, workouts_per_week
+        FROM UserLogins
+        WHERE username=?
+    """, (username,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return {}
+
+    workouts = json.loads(row["goal_other"])
+    days_per_week = row["workouts_per_week"]
+
+    week = {}
+
+    for i in range(1, 8):  # Mon–Sun
+        key = f"day_{i}"
+        week[key] = [ex[0] for ex in workouts.get(key, [])]
+
+    return week
+
+def get_today_exercises(username, day_number=1):
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT goal_other FROM UserLogins WHERE username=?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return []
+
+    workouts = json.loads(row["goal_other"])
+    day_key = f"day_{day_number}"
+
+    if day_key not in workouts:
+        return []
+
+    return [ex[0] for ex in workouts[day_key]]
+
+
+
 # -------------------------
 # Login
 # -------------------------
-
+@app.route('/reset_stats', methods=['POST'])
 def reset_stats():
     user_id = session.get('user_id')
     if user_id not in loggedInUsers:
@@ -771,29 +935,44 @@ def login():
 # -------------------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+
     if request.method == 'POST':
+
         username = request.form['username']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
 
         goal = request.form.get('goal')
         goal_other = request.form.get('goal_other') if goal == 'other' else None
-        workouts_per_week = request.form.get('workouts_per_week')
+        workouts_per_week = int(request.form.get('workouts_per_week', 0))
         body_part = request.form.get('body_part')
 
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Insert user
-            cursor.execute(
-                """
-                INSERT INTO UserLogins (username, email, password, goal, goal_other, workouts_per_week, body_part)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (username, email, password, goal, goal_other, workouts_per_week, body_part)
-            )
-            user_id = cursor.lastrowid
+            # Generate workout plan
+            workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+
+            # If you're storing selected exercises separately
+            # make sure all_selected_exercises exists before this
+            if 'all_selected_exercises' in globals():
+                goal_other = json.dumps(all_selected_exercises)
+
+            cursor.execute("""
+                INSERT INTO UserLogins
+                (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                username,
+                email,
+                password,
+                goal,
+                goal_other,
+                workouts_per_week,
+                body_part,
+                workout_plan
+            ))
 
             conn.commit()
             conn.close()
@@ -806,7 +985,6 @@ def register():
             return redirect(url_for('register'))
 
     return render_template('register.html')
-
 # -------------------------
 # Home
 # -------------------------
