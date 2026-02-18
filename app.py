@@ -279,7 +279,7 @@ class SquatController:
                 self.count += 1
                 self.state = SquatState.IDLE
                 print(f"Count: {self.count}")
-
+    
     def draw(self,image, detection_result):
         annotated_image = image.copy()
         if not detection_result.pose_landmarks:
@@ -295,7 +295,7 @@ class SquatController:
             right_hip = to_pixel(pose_landmarks[RIGHT_HIP])
             right_knee = to_pixel(pose_landmarks[RIGHT_KNEE])
             right_ankle = to_pixel(pose_landmarks[RIGHT_HEEL])
-
+            
             cv2.line(annotated_image, left_hip, left_ankle, (255, 0, 0), 2)
 
             cv2.line(annotated_image, left_hip, left_knee, (0, 255, 0), 2)
@@ -318,12 +318,12 @@ class LungeController:
         self.heelToHeelDistance=0
         self.calfLength=0 #this is a constant
         self.idleHipHeight=0
-
+    
     def update(self,detection_result, image_shape):
         if not detection_result or not detection_result.pose_landmarks:
             return
-        landmarks = detection_result.pose_landmarks[0]
-        pixel_landmarks = landmarks_to_pixels(landmarks, image_shape)
+        landmarks = detection_result.pose_landmarks[0] 
+        pixel_landmarks = landmarks_to_pixels(landmarks, image_shape)  
         left_hip = pixel_landmarks[LEFT_HIP] #both share a point at knee
         left_knee = pixel_landmarks[LEFT_KNEE]
         left_heel = pixel_landmarks[LEFT_HEEL]
@@ -345,22 +345,22 @@ class LungeController:
 
             left_heel = np.array(left_heel)
             right_heel = np.array(right_heel)
-
+                
             self.heelToHeelDistance=np.linalg.norm(left_heel-right_heel) #this is a constant!!!!
-
+            
             self.idleHipHeight = right_hip[1]
 
             if(abs(self.heelToHeelDistance)> 1.3 * self.calfLength):
 
                 self.state=LungeState.DESCENDING
                 return
-
+            
         elif self.state==LungeState.DESCENDING:
             pass
 
             left_heel = np.array(left_heel)
             right_heel = np.array(right_heel)
-
+                
             self.heelToHeelDistance=np.linalg.norm(left_heel-right_heel) 
 
             if(abs(self.heelToHeelDistance)< 1.3 * self.calfLength):
@@ -368,7 +368,7 @@ class LungeController:
                 return
             rightCalfSlope = (right_knee[1]-right_heel[1])  / (right_knee[0]-right_heel[0])
             leftCalfSlope = (left_knee[1]-right_heel[1])  / (left_knee[0]-left_heel[0])
-
+    
             self.right_knee_angle=angleBetweenLines(right_hip,right_knee,right_heel)
             self.left_knee_angle=angleBetweenLines(left_hip,left_knee,left_heel)
             backLeg="dumb"
@@ -386,25 +386,25 @@ class LungeController:
             elif(frontLeg=="left" and self.right_knee_angle< 110):
                 self.state=LungeState.DOWN
                 return
-
+ 
         if self.state==LungeState.DOWN:
 
             left_heel = np.array(left_heel)
             right_heel = np.array(right_heel)
-
+                
             self.heelToHeelDistance=np.linalg.norm(left_heel-right_heel) #this is a constant!!!!
             if(abs(self.heelToHeelDistance) < self.calfLength *1.3):
                 self.state=LungeState.ASCENDING
                 self.count=self.count+1
                 return
-
+        
         if self.state==LungeState.ASCENDING:
             self.right_knee_angle=angleBetweenLines(right_hip,right_knee,right_heel)
             self.left_knee_angle=angleBetweenLines(left_hip,left_knee,left_heel)
             if(self.right_knee_angle > 140 and self.left_knee_angle >140):
                 self.state=LungeState.IDLE
                 return
-
+ 
     def draw(self,image, detection_result):
         annotated_image = image.copy()
         if not detection_result.pose_landmarks:
@@ -423,18 +423,18 @@ class LungeController:
 
             left_ankle = np.array(left_ankle)
             right_ankle = np.array(right_ankle)
-
+            
             ankleToAnkleDistance=np.linalg.norm(left_ankle-right_ankle) #this is a constant!!!!
 
             right_knee = np.array(right_knee)
             rightCalfLength=np.linalg.norm(right_knee-right_ankle) #this is a constant!!!!
-
+            
             if(abs(ankleToAnkleDistance) > 1.5 * rightCalfLength):
                 cv2.line(annotated_image, left_ankle, right_ankle, (0, 0, 255), 2)
 
             else:
                 cv2.line(annotated_image, left_ankle, right_ankle, (0, 255, 0), 2)
-
+            
             cv2.line(annotated_image, right_knee, right_ankle, (255, 0, 0), 2)
             cv2.line(annotated_image, left_hip, left_knee, (0, 255, 0), 2)
             cv2.line(annotated_image, left_knee, left_ankle, (0, 255, 0), 2)
@@ -536,11 +536,11 @@ class GluteBridgeController():
             cv2.line(annotated_image, shoulder, hip, (0, 255, 0), 4)
             cv2.line(annotated_image, hip, knee, (0, 0, 255), 4)
             cv2.line(annotated_image, knee, ankle, (255, 0, 0), 4)
-
+            
             cv2.circle(annotated_image, hip, 6, (255, 255, 255), -1)
             cv2.circle(annotated_image, knee, 6, (255, 255, 255), -1)
             cv2.circle(annotated_image, ankle, 6, (0, 255, 255), -1)
-
+            
         return annotated_image
 
 
@@ -556,20 +556,20 @@ class SupermanController:
     def update(self,detection_result, image_shape):
         if not detection_result or not detection_result.pose_landmarks:
             return
-
+            
         landmarks = detection_result.pose_landmarks[0]
         pixel_landmarks = landmarks_to_pixels(landmarks, image_shape)
-
+        
         shoulder = pixel_landmarks[RIGHT_SHOULDER]
         hip = pixel_landmarks[RIGHT_HIP]
         knee = pixel_landmarks[RIGHT_KNEE]
-
+        
         self.back_angle = angleBetweenLines(shoulder, hip, knee)
-
+        
         if self.state == SupermanState.IDLE:
             if self.back_angle < 165:
                 self.state = SupermanState.UP
-
+                
         elif self.state == SupermanState.UP:
             if self.back_angle > 175:
                 self.count += 1
@@ -583,13 +583,13 @@ class SupermanController:
         for pose_landmarks in detection_result.pose_landmarks:
             def to_pixel(lm):
                 return int(lm.x * w), int(lm.y * h)
-
+            
             shoulder = to_pixel(pose_landmarks[RIGHT_SHOULDER])
             hip = to_pixel(pose_landmarks[RIGHT_HIP])
             knee = to_pixel(pose_landmarks[RIGHT_KNEE])
-
+            
             color = (0, 255, 0) if self.state == GluteBridgeState.UP else (0, 0, 255)
-
+            
             cv2.line(annotated_image, shoulder, hip, color, 4)
             cv2.line(annotated_image, hip, knee, color, 4)
         return annotated_image
@@ -986,7 +986,7 @@ def generate_frames(user_id):
         return
     currentUser= loggedInUsers[user_id]
 
-
+    
 
     global camera
     while True:
@@ -998,7 +998,7 @@ def generate_frames(user_id):
             break
 
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        currentUser.latest_detection = detector.detect(mp_image)
+        currentUser.latest_detection = detector.detect(mp_image)     
         currentUser.currentExercise = currentUser.exerciseManager.getCurrentExercise()
         currentUser.currentExercise.update(currentUser.latest_detection, frame.shape)
 
@@ -1019,15 +1019,13 @@ all_selected_exercises = {}
 ##upper_body = ["Push-ups", "V pushups", "Inverted Rows", "Pull-ups"]
 upper_body = ["Push-ups", "V pushups"]
 ##lower_body = ["squats", "lunges", "Glute Bridges", "Calf Raises"]
-lower_body = ["squats", "lunges","Glute Bridges"]
+lower_body = ["squats", "lunges"]
 core = ["Sit-ups", "Supermans"]
-time_core = ["Plank"]
-
-cardio = ["Jumping Jacks", "Running", ]
+time_core = ["Plank"] 
+cardio = ["Jumping Jacks",  "Running"]
 
 push_day = ["Push-ups", "V pushups"]
-leg_day = ["Squats", "Lunges","Glute Bridges" ]
-
+leg_day = ["Squats", "Lunges" ]
 
 new_people_exercises = [
     "Glute Bridges", "Running", "Jumping Jacks",
@@ -1039,7 +1037,7 @@ new_people_exercises = [
 rep_ranges = {
     "Beginner": {
         "strength": "3 x 12 reps",
-        "core": "3 x 12 reps",
+        "core": "3 x 12 reps", 
         "long core": "1:30 min",
         "cardio": "45 seconds"
     }
@@ -1182,16 +1180,16 @@ def reset_stats():
     user_id = session.get('user_id')
     if user_id not in loggedInUsers:
         return jsonify(status="error"), 401
-
+        
     currentUser = loggedInUsers[user_id]
     # Fetch the controller instance
     current_ex_obj = currentUser.exerciseManager.getCurrentExercise()
-
+    
     current_ex_obj.count = 0
-    current_ex_obj.state = "IDLE"
-
+    current_ex_obj.state = "IDLE" 
+    
     return jsonify({
-        "status": "success",
+        "status": "success", 
         "message": f"Counter reset for {currentUser.exerciseManager.currentExercise}"
     })
 
@@ -1296,7 +1294,7 @@ def home():
 @app.route('/workoutSession')
 def workoutSession():
 
-
+    
     if "username" not in session:
         return redirect(url_for("login"))
     user_id = session["user_id"]
