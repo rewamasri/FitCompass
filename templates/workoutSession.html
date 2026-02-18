@@ -280,6 +280,7 @@ const gifMap = {
   situps: "{{ url_for('static', filename='situps.gif') }}",
   jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
   pushups: "{{ url_for('static', filename='pushup.gif') }}",
+  glutebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
   running: "{{ url_for('static', filename='running.gif') }}"
 };
 
@@ -382,18 +383,15 @@ function normalizeName(name) {
 
 function moveToNextExercise() {
 
-    if (isSwitching) return;
-    isSwitching = true;
-
     clearInterval(timerInterval);
-    timerInterval = null;
-
-    routineIndex++;
-    lastCount = 0;
-    document.getElementById('rep_count').innerText = "0";
 
     fetch('/reset_stats', { method: 'POST' })
         .then(() => {
+
+            routineIndex++;
+
+            lastCount = 0;
+            document.getElementById('rep_count').innerText = "0";
 
             if (routineIndex >= workoutRoutine.length) {
                 workoutFinished = true;
@@ -403,7 +401,6 @@ function moveToNextExercise() {
 
             const next = workoutRoutine[routineIndex];
 
-            // WAIT for backend to switch
             changeExercise(next.name).then(() => {
 
                 applyExerciseUIMode(next);
@@ -412,11 +409,9 @@ function moveToNextExercise() {
                     startTimer(next.duration);
                 }
 
+                isSwitching = false;  // unlock AFTER full switch
             });
-
         });
-
-    setTimeout(() => isSwitching = false, 800);
 }
 
 /* ---------------- UPDATE STATS ---------------- */
@@ -452,8 +447,12 @@ function updateStats() {
             }
 
             if (data.count >= current.target) {
+
+                clearInterval(statsInterval);  
+                statsInterval = null;
                 moveToNextExercise();
             }
+
         });
 }
 

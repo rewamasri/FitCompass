@@ -1019,14 +1019,14 @@ all_selected_exercises = {}
 ##upper_body = ["Push-ups", "V pushups", "Inverted Rows", "Pull-ups"]
 upper_body = ["Push-ups", "V pushups"]
 ##lower_body = ["squats", "lunges", "Glute Bridges", "Calf Raises"]
-lower_body = ["squats", "lunges"]
+lower_body = ["squats", "lunges","Glute Bridges"]
 core = ["Sit-ups", "Supermans"]
 time_core = ["Plank"]
 
 cardio = ["Jumping Jacks", "Running", ]
 
 push_day = ["Push-ups", "V pushups"]
-leg_day = ["Squats", "Lunges" ]
+leg_day = ["Squats", "Lunges","Glute Bridges" ]
 
 
 new_people_exercises = [
