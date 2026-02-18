@@ -137,59 +137,56 @@
       padding:10px 16px;
       border-radius:10px;
       font-size:18px;
-      color:black;
     }
 
+    /* Center content */
     .center{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      padding-top: 10px;
     }
 
+    /* Smaller logo */
     .logo-box{
-      width:180px;
-      height:180px;
-      background:rgba(0,0,0,.18);
-      border-radius:12px;
-      display:grid;
-      place-items:center;
+      width: 180px;
+      height: 180px;
+      background: rgba(0, 0, 0, .18);
+      border: 2px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      box-shadow: var(--shadow);
+      padding: 10px;
+    }
+    .logo-box .logo-text{
+      text-align: center;
+      line-height: 1.05;
+    }
+    .logo-box .logo-text .brand{
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .8px;
+    }
+    .logo-box .logo-text .tagline{
+      font-size: 10px;
+      opacity: .8;
+      margin-top: 6px;
     }
 
-    /* Day buttons */
-    .day-buttons{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-    }
-
-    .day-buttons button{
-      background:white;
-      border:none;
-      border-radius:8px;
-      padding:10px 14px;
-      font-family:var(--font);
-      cursor:pointer;
-      box-shadow:0 4px 10px rgba(0,0,0,.1);
-    }
-
-    .day-buttons button.active{
-      background:var(--btn-green);
-      font-weight:bold;
-    }
-
-    /* Workout card */
+    /* Recommended workout card */
     .card{
       background:var(--card);
       width:70%;
-      min-height:240px;
+      height:260px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       border-radius:12px;
-      padding:16px;
-      color:black;
+      font-size:28px;
+      color:#000;
       box-shadow:var(--shadow);
-      overflow-y:auto;
-      white-space:pre-wrap;
     }
 
     .start-btn{
@@ -238,27 +235,18 @@
       </div>
 
       <div class="points">
-        Points: {{ points }}
+        points: {{ points }}
       </div>
     </div>
 
     <section class="center">
 
-      <!-- LOGO -->
-      <div class="logo-box">
-        <img src="{{ url_for('static', filename='logo.png') }}"
-             style="max-width:100%; max-height:50%;" />
-      </div>
+      <div class="logo-box" aria-label="FitCompass logo">
+          <div class="logo-text">
+            <img src="static/logo.png" alt="FitCompass logo" style="max-width:100%; max-height:50%;" />
+          </div>
+        </div>
 
-      <!-- DAY BUTTONS -->
-      <div class="day-buttons">
-        {% set days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
-        {% for i in range(1,8) %}
-          <button onclick="showWorkout({{ i }})">{{ days[i-1] }}</button>
-        {% endfor %}
-      </div>
-
-      <!-- WORKOUT CARD -->
       <div class="card">
         <strong id="day-title">Select a Day</strong>
         <hr>
@@ -268,51 +256,12 @@
         
       </div>
 
-      <!-- START BUTTON -->
-      <button
-        onclick="location.href='{{ url_for('workoutSession') }}'"
-        class="start-btn"
-        id="startBtn">
-        START
-      </button>
-
+      <button onclick="location.href='{{ url_for('workoutSession') }}'" class="start-btn">
+        START</button>
     </section>
+
   </main>
 </div>
-
-<script>
-  const weeklyWorkouts = {{ weekly_workouts | tojson }};
-
-  const dayNames = {
-    1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",
-    5:"Friday",6:"Saturday",7:"Sunday"
-  };
-
-  function showWorkout(day){
-    const title = document.getElementById("day-title");
-    const content = document.getElementById("workout-content");
-    const startBtn = document.getElementById("startBtn");
-
-    document.querySelectorAll(".day-buttons button")
-      .forEach(b => b.classList.remove("active"));
-    event.target.classList.add("active");
-
-    title.textContent = `${dayNames[day]} Workout`;
-
-    const exercises = weeklyWorkouts[`day_${day}`];
-
-    if(exercises && exercises.length > 0){
-      content.innerHTML = exercises.map(e => `• ${e}`).join("<br>");
-      startBtn.disabled = false;
-      startBtn.style.opacity = "1";
-    } else {
-      content.innerHTML = "Rest Day <br>Recovery, stretching, or light walking recommended.";
-      startBtn.disabled = true;
-      startBtn.style.opacity = ".5";
-    }
-  }
-</script>
-
 </body>
 </html>
 
