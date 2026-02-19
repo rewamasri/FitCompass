@@ -292,10 +292,6 @@
   </div>
 
 
-   
-    <!-- <button onclick="changeWorkout('squats')">count squats</button>
-    <button onclick="changeWorkout('situps')">count situps</button>
-    <button onclick="changeWorkout('lunges')">count lunges</button> -->
   </main>
 
 
@@ -310,24 +306,25 @@ const gifMap = {
   squats: "{{ url_for('static', filename='squats.gif') }}",
   lunges: "{{ url_for('static', filename='lunges.gif') }}",
   situps: "{{ url_for('static', filename='situps.gif') }}",
-  jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
+  jumpingjacks: "{{ url_for('static', filename='jumpingjacks.gif') }}",
   pushups: "{{ url_for('static', filename='pushups.gif') }}",
   glutebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
-  running: "{{ url_for('static', filename='running.gif') }}"
+  running: "{{ url_for('static', filename='running.gif') }}",
+  supermans: "{{ url_for('static', filename='supermans.gif') }}"
+
 };
 
 
 /* ---------------- WORKOUT ROUTINE ---------------- */
 
-
+//hardcoded durations and reps, someone please change this
 const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
     .map(ex => {
 
 
         const name = ex.toLowerCase(); // normalize
 
-
-        if (["jumping jacks", "running", "burpees"].includes(name)) {
+        if (["jumpingjacks", "running"].includes(name)) {
             return { name: name, type: "timer", duration: 30 };
         }
 
