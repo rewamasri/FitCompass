@@ -1,236 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Digital Clothing Shop</title>
-  <style>
-    :root {
-      --bg-dark: #083f5b;
-      --bg-light: #dff6f7;
-      --card: #2c5a73;
-      --buy: #9be37b;
-      --text: #ffffff;
-    }
+<title>Shop</title>
+<style>
+body {
+    font-family: monospace;
+    background:#1f4d69;
+    color:white;
+    text-align:center;
+}
 
-    * {
-      box-sizing: border-box;
-      font-family: Arial, Helvetica, sans-serif;
-    }
+.shop-container {
+    display:flex;
+    justify-content:center;
+    gap:40px;
+    margin-top:40px;
+}
 
-    body {
-      margin: 0;
-      background-color: var(--bg-dark);
-      color: var(--text);
-    }
+.card {
+    background:#2c5a73;
+    padding:20px;
+    width:220px;
+    border-radius:12px;
+}
 
-    header {
-      background-color: var(--bg-light);
-      color: #000;
-      padding: 20px;
-      font-size: 24px;
-    }
+button {
+    padding:8px 12px;
+    margin:6px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
 
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      padding: 40px;
-      gap: 40px;
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
-    .section {
-      margin-bottom: 40px;
-    }
-
-    .items {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-
-    .card {
-      background-color: var(--card);
-      padding: 20px;
-      width: 140px;
-      border-radius: 6px;
-      text-align: center;
-      display:flex;
-      flex-direction: column;
-      gap:10px;
-    }
-    
-
-    .card p {
-      margin: 10px 0;
-    }
-
-    button {
-      background-color: var(--buy);
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    button:hover {
-      opacity: 0.85;
-    }
-
-    .avatar {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-
-    footer {
-      text-align: center;
-      padding: 20px;
-      font-size: 14px;
-      opacity: 0.7;
-    }
-  .avatar-box {
-    width: 260px;
-    height: 420px;
-    position: relative; /* This is the anchor */
-    background: #0f6b8f;
-    overflow: hidden;
-    border-radius: 12px;
-  }
-
-  .michalis-layers {
-    width: 100%;
-    height: 100%;
-    position: relative; 
-  }
-
-  /* This targets the divs (expression, sleeves, torso) AND the base template img */
-  .michalis-layers > div, 
-  .michalis-layers > img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  /* Ensure all images inside those divs fill the space correctly */
-  .michalis-layers img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain; /* Keeps them from stretching */
-    display: block;
-  }
-
-  
-
-  
-  </style>
+.buy { background:#4CAF50; color:white; }
+.wear { background:#2196F3; color:white; }
+.message { color:#ffaaaa; font-size:14px; }
+</style>
 </head>
 <body>
-  <header>Shop</header>
 
-  <div class="container">
-    <!-- LEFT SIDE -->
-    <div>
-      <div class="section">
-        <h2>Hats</h2>
-        <div class="items">
-          <div class="card">
-            <p>no hats yet</p>
-          </div>
-        </div>
-      </div>
-      <hr />
+<h1>Costume Shop</h1>
+<h2>Coins: <span id="coins">{{ coins }}</span></h2>
 
-      <div class="section">
-        <h2>shirts</h2>
-        <div class="items">
-          <div class="card">
-            <p>button up</p>
-            <button onclick="buyItem('torso','professor button up',this)">Buy</button>
-            <button onclick="takeOff('torso')">take off</button>
+<div class="shop-container">
 
-          </div>
-        </div>
-      </div>
-    </div>
+{% for name, cost in [("fireman",200),("astronaut",300),("cowboy",250)] %}
 
-    <!-- RIGHT SIDE -->
-    <div class="avatar">
-      <div class="avatar-box">
-        <div class="michalis-layers">
-          <!-- base needs to be drawn first -->
-          <div class="base-body"> 
-            <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="template">  
-          </div>
+<div class="card">
+    <h3>{{ name.capitalize() }}</h3>
+    <p>Cost: {{ cost }}</p>
 
-          <div class="base-arms">
-            <img src="{{ url_for('static', filename='michalis/arms-low-longsleeve.png') }}" alt="low arms pose">  
-          </div>
- 
-          <div class="expression">
-            <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="slight smile">   
-          </div> 
+    <button class="buy"
+        {% if name in owned %}disabled{% endif %}
+        onclick="buy('{{name}}',{{cost}},this)">
+        {% if name in owned %}Owned{% else %}Buy{% endif %}
+    </button>
 
-          <div class="sleeves">
-            <img src="{{ url_for('static', filename='michalis/arms-low-buttonup.png') }}" alt="low arms pose">  
-          </div>
+    <button class="wear"
+        {% if name not in owned %}disabled{% endif %}
+        onclick="wear('{{name}}')">
+        {% if equipped == name %}Wearing{% else %}Wear{% endif %}
+    </button>
 
-          <div class="torso">
-            <img src="{{ url_for('static', filename='michalis/torso-buttonup.png') }}" alt="low arms pose">  
-          </div>
-          
-        </div>
-        </div>
-        </div>
-    </div>
-  </div>
+    <div class="message"></div>
+</div>
 
+{% endfor %}
 
-  <script>
-    function buyItem(itemType, itemName, button) {
-      console.log("Buying:", itemName, "Type:", itemType);
-      if (button.innerText === "Buy") {
-        button.innerText = "Wear";
-      }
+</div>
 
-      if (itemType === "torso") {
-        const torsoContainer = document.querySelector(".torso");
-        const sleevesContainer = document.querySelector(".sleeves");
+<script>
+function buy(name, cost, btn){
+    const card = btn.parentElement;
+    const msg = card.querySelector(".message");
 
-        if (torsoContainer) torsoContainer.style.display = "block";
-        if (sleevesContainer) sleevesContainer.style.display = "block";
-      }
-    }
+    fetch("/buy_costume", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({costume:name, cost:cost})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.status==="success"){
+            document.getElementById("coins").innerText = data.new_coins;
+            btn.innerText="Owned";
+            btn.disabled=true;
+            card.querySelector(".wear").disabled=false;
+            msg.innerText="";
+        }
+        else if(data.status==="not_enough"){
+            msg.innerText="Not enough coins!";
+        }
+        else if(data.status==="already_owned"){
+            msg.innerText="Already owned!";
+        }
+    });
+}
 
-    function takeOff(itemType) {
-      console.log("Taking off:", itemType);
-      if (itemType === "torso") {
-        const torsoContainer = document.querySelector(".torso");
-        const sleevesContainer = document.querySelector(".sleeves");
-
-        if (torsoContainer) torsoContainer.style.display = "none";
-        if (sleevesContainer) sleevesContainer.style.display = "none";
-        
-        const buyBtn = document.querySelector("button[onclick*='torso']");
-      }
-    }
-  </script>
-
-    <footer>
-    Digital Clothing Store • Demo UI (No real payments)
-  </footer>
+function wear(name){
+    fetch("/wear_costume", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({costume:name})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.status==="success"){
+            location.reload();
+        }
+    });
+}
+</script>
 
 </body>
-</html>
-    }
-  </script>
-</body>
-
 </html>
