@@ -41,8 +41,7 @@ def get_db_connection():
 connection = get_db_connection()
 cursor = connection.cursor()
 
-# Drop old table if it exists (WARNING: deletes old user data!) Only do when adding columns to the table and want total reset
-# cursor.execute("DROP TABLE IF EXISTS UserLogins")
+
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS UserLogins(
@@ -727,158 +726,6 @@ class PushUpController:
         return annotated_image
 
 
-# =======================
-# V-PUSHUP TOLERANCE
-# =======================
-IDEAL_V_ANGLE = 95          # Ideal pike angle
-V_ANGLE_TOLERANCE = 25      # +- degrees allowed
-
-MIN_HIP_RISE = 25           # px
-HIP_RISE_TOLERANCE = 15     # px buffer
-
-MIN_ELBOW_DOWN = 90
-MAX_ELBOW_UP   = 165
-
-
-# =======================
-# STATES
-# =======================
-class VPushUpState:
-    IDLE = "IDLE"
-    DOWN = "DOWN"
-    UP   = "UP"
-
-
-# =======================
-# CONTROLLER
-# =======================
-class VPushUpController:
-    def __init__(self):
-        self.state = VPushUpState.IDLE
-        self.count = 0
-        self.elbow_angle = 0
-        self.body_angle = 0
-        self.side = None  # "left" or "right"
-
-    # -----------------------
-    # UPDATE (LOGIC)
-    # -----------------------
-    def update(self, detection_result, image_shape):
-        if not detection_result or not detection_result.pose_landmarks:
-            return
-
-        landmarks = detection_result.pose_landmarks[0]
-        pixel_landmarks = landmarks_to_pixels(landmarks, image_shape)
-
-        # ---- Choose best side ----
-        if self.side is None:
-            self.side = (
-                "left"
-                if landmarks[LEFT_ELBOW].visibility >
-                   landmarks[RIGHT_ELBOW].visibility
-                else "right"
-            )
-
-        if self.side == "left":
-            shoulder = pixel_landmarks[LEFT_SHOULDER]
-            elbow    = pixel_landmarks[LEFT_ELBOW]
-            wrist    = pixel_landmarks[LEFT_WRIST]
-            hip      = pixel_landmarks[LEFT_HIP]
-            ankle    = pixel_landmarks[LEFT_ANKLE]
-        else:
-            shoulder = pixel_landmarks[RIGHT_SHOULDER]
-            elbow    = pixel_landmarks[RIGHT_ELBOW]
-            wrist    = pixel_landmarks[RIGHT_WRIST]
-            hip      = pixel_landmarks[RIGHT_HIP]
-            ankle    = pixel_landmarks[RIGHT_ANKLE]
-
-        # ---- Angles ----
-        self.elbow_angle = angleBetweenLines(shoulder, elbow, wrist)
-        self.body_angle  = angleBetweenLines(shoulder, hip, ankle)
-
-        # ---- FORM CHECK (TOLERANT) ----
-        v_angle_ok = abs(self.body_angle - IDEAL_V_ANGLE) <= V_ANGLE_TOLERANCE
-        hips_high_ok = hip[1] <= shoulder[1] - (MIN_HIP_RISE - HIP_RISE_TOLERANCE)
-
-        good_form = v_angle_ok and hips_high_ok
-
-        # ---- STATE MACHINE ----
-        if self.state == VPushUpState.IDLE:
-            if self.elbow_angle < 140 and good_form:
-                self.state = VPushUpState.DOWN
-
-        elif self.state == VPushUpState.DOWN:
-            if self.elbow_angle < MIN_ELBOW_DOWN and good_form:
-                self.state = VPushUpState.UP
-
-        elif self.state == VPushUpState.UP:
-            if self.elbow_angle > MAX_ELBOW_UP and good_form:
-                self.count += 1
-                self.state = VPushUpState.IDLE
-                print(f"V Push-ups: {self.count}")
-
-    # -----------------------
-    # DRAW (VISUALS)
-    # -----------------------
-    def draw(self, image, detection_result):
-        annotated_image = image.copy()
-
-        if not detection_result or not detection_result.pose_landmarks:
-            return annotated_image
-
-        h, w, _ = image.shape
-
-        for pose_landmarks in detection_result.pose_landmarks:
-
-            def to_pixel(lm):
-                return int(lm.x * w), int(lm.y * h)
-
-            if self.side == "left":
-                shoulder = to_pixel(pose_landmarks[LEFT_SHOULDER])
-                elbow    = to_pixel(pose_landmarks[LEFT_ELBOW])
-                wrist    = to_pixel(pose_landmarks[LEFT_WRIST])
-                hip      = to_pixel(pose_landmarks[LEFT_HIP])
-                ankle    = to_pixel(pose_landmarks[LEFT_ANKLE])
-            else:
-                shoulder = to_pixel(pose_landmarks[RIGHT_SHOULDER])
-                elbow    = to_pixel(pose_landmarks[RIGHT_ELBOW])
-                wrist    = to_pixel(pose_landmarks[RIGHT_WRIST])
-                hip      = to_pixel(pose_landmarks[RIGHT_HIP])
-                ankle    = to_pixel(pose_landmarks[RIGHT_ANKLE])
-
-            # ---- FORM CHECK ----
-            v_angle_ok = abs(self.body_angle - IDEAL_V_ANGLE) <= V_ANGLE_TOLERANCE
-            hips_high_ok = hip[1] <= shoulder[1] - (MIN_HIP_RISE - HIP_RISE_TOLERANCE)
-
-            good_form = v_angle_ok and hips_high_ok
-
-            if good_form:
-                color = (0, 255, 0)      # Green
-            elif v_angle_ok or hips_high_ok:
-                color = (0, 255, 255)    # Yellow (close)
-            else:
-                color = (0, 0, 255)      # Red
-
-            # ---- ARM ----
-            cv2.line(annotated_image, shoulder, elbow, color, 2)
-            cv2.line(annotated_image, elbow, wrist, color, 2)
-
-            # ---- BODY ----
-            cv2.line(annotated_image, shoulder, hip, color, 2)
-            cv2.line(annotated_image, hip, ankle, color, 2)
-
-            # ---- DEBUG ----
-            cv2.putText(
-                annotated_image,
-                f"Elbow: {int(self.elbow_angle)}  Body: {int(self.body_angle)}",
-                (30, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                color,
-                2
-            )
-
-        return annotated_image
 
 
 sitUpController = SitUpController()
@@ -887,7 +734,7 @@ lungeController = LungeController()
 runningController = RunningController()
 jumpingjacksController = JumpingJacksController()
 pushupController = PushUpController()
-vpushupController = VPushUpController()
+
 
 class ExerciseManager:
 
@@ -898,7 +745,6 @@ class ExerciseManager:
             "situps": SitUpController(),
             "lunges": LungeController(),
             "pushups" : PushUpController(),
-            "vpushups" : VPushUpController(),
             "running" : RunningController(), 
             "jumpingjacks" : JumpingJacksController()
         }
@@ -1022,15 +868,13 @@ all_selected_exercises = {}
 # ---------------- EXERCISES ----------------
 
 ##upper_body = ["Push-ups", "V pushups", "Inverted Rows", "Pull-ups"]
-upper_body = ["Push-ups", "V pushups"]
+upper_body = ["Push-ups"]
 ##lower_body = ["squats", "lunges", "Glute Bridges", "Calf Raises"]
 lower_body = ["squats", "lunges"]
 core = ["Sit-ups", "Supermans"]
 time_core = ["Plank"] 
 cardio = ["Jumping Jacks",  "Running"]
 
-push_day = ["Push-ups", "V pushups"]
-leg_day = ["Squats", "Lunges" ]
 
 new_people_exercises = [
     "Glute Bridges", "Running", "Jumping Jacks",
