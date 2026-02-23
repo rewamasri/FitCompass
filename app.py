@@ -53,7 +53,12 @@ CREATE TABLE IF NOT EXISTS UserLogins(
     goal TEXT,
     goal_other TEXT,
     workouts_per_week INTEGER,
-    body_part TEXT
+    body_part TEXT,
+    workout_plan TEXT,
+    coins INTEGER DEFAULT 1000,
+    history TEXT DEFAULT '[]',
+    outfits TEXT DEFAULT '[]',
+    current_workout TEXT
 )
 """)
 
@@ -1238,19 +1243,23 @@ def register():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-
-            # Generate workout plan
+ 
+            
             workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
 
-            # If you're storing selected exercises separately
-            # make sure all_selected_exercises exists before this
+           
             if 'all_selected_exercises' in globals():
                 goal_other = json.dumps(all_selected_exercises)
 
+            workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+
+            
+            history = json.dumps([workout_plan])
+
             cursor.execute("""
                 INSERT INTO UserLogins
-                (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan, history)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 username,
                 email,
@@ -1259,7 +1268,8 @@ def register():
                 goal_other,
                 workouts_per_week,
                 body_part,
-                workout_plan
+                workout_plan,
+                history
             ))
 
             conn.commit()
@@ -1278,8 +1288,20 @@ def register():
 # -------------------------
 @app.route('/home')
 def home():
-    username = session.get('username')
 
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    username = session["username"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT coins FROM UserLogins WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+
+    coins = row["coins"] if row else 0
     weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
@@ -1287,7 +1309,7 @@ def home():
         username=username,
         weekly_workouts=weekly_workouts,
         goal_percent=75,
-        points=120
+        points=coins
     )
 
 
@@ -1307,6 +1329,8 @@ def workoutSession():
 
     return render_template("workoutSession.html", exercises=today_exercises)
 
+
+
 @app.route('/workoutcomplete')
 def workoutcomplete():
 
@@ -1319,9 +1343,123 @@ def workoutcomplete():
 # -------------------------
 # Placeholder
 # -------------------------
-@app.route('/profile')
+@app.route("/profile")
 def profile():
-    return "Profile page coming soon"
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT username, email, goal, workouts_per_week,coins
+        FROM UserLogins
+        WHERE username = ?
+    """, (session["username"],))
+
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template(
+        "profile.html",
+        username=user["username"],
+        email=user["email"],
+        goal=user["goal"],
+        workouts_per_week=user["workouts_per_week"],
+        points=user["coins"],
+        goal_percent=75,
+
+    )
+
+@app.route("/profileEdit", methods=["GET", "POST"])
+def profileEdit():
+
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == "POST":
+
+        email = request.form["email"]
+        goal = request.form["goal"]
+        workouts_per_week = int(request.form["workouts_per_week"])
+        body_part = request.form["body_part"]
+
+
+        workout_plan = generate_workout_plan(goal,workouts_per_week,body_part)
+
+        if request.method == "POST":
+
+            email = request.form["email"]
+            goal = request.form["goal"]
+            workouts_per_week = int(request.form["workouts_per_week"])
+            body_part = request.form["body_part"]
+
+            workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+
+            
+            cursor.execute("SELECT history FROM UserLogins WHERE username = ?", (session["username"],))
+            row = cursor.fetchone()
+
+            if row and row["history"]:
+                history = json.loads(row["history"])
+            else:
+                history = []
+
+            # add history
+            history.append(workout_plan)
+            updated_history = json.dumps(history)
+
+            cursor.execute("""
+                UPDATE UserLogins
+                SET email = ?, 
+                    goal = ?, 
+                    workouts_per_week = ?, 
+                    body_part = ?, 
+                    workout_plan = ?,
+                    history = ?
+                WHERE username = ?
+            """, (
+                email,
+                goal,
+                workouts_per_week,
+                body_part,
+                workout_plan,
+                updated_history,
+                session["username"]
+            ))
+
+            conn.commit()
+            conn.close()
+
+            flash("Profile updated and workout plan added to history!")
+            return redirect(url_for("profile"))
+
+   
+    cursor.execute("""
+        SELECT email, goal, goal_other,
+               workouts_per_week, 
+               body_part, workout_plan
+        FROM UserLogins
+        WHERE username = ?
+    """, (session["username"],))
+
+    user = cursor.fetchone()
+    conn.close()
+
+    return render_template(
+        "profileEdit.html",
+        email=user["email"],
+        goal=user["goal"],
+        goal_other=user["goal_other"],
+        workouts_per_week=user["workouts_per_week"],
+        body_part=user["body_part"]
+    )
 
 @app.route('/history')
 def history():

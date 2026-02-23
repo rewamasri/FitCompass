@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FitCompass - Profile</title>
+
+<style>
+:root{
+  --bg-main:#1f4d69;
+  --bg-sidebar:#d8eff4;
+  --btn-green:#a9d99b;
+  --btn-red:#d83a4a;
+  --card:#d8eff4;
+  --text-dark:#0f1a1f;
+  --shadow:0 10px 30px rgba(0,0,0,.18);
+  --radius:14px;
+  --font:ui-monospace, Menlo, Consolas, monospace;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  font-family:var(--font);
+  background:#0f2330;
+  color:white;
+  min-height:100vh;
+}
+
+.app{ display:flex; min-height:100vh; }
+
+/* Sidebar */
+.sidebar{
+  width:260px;
+  background:var(--bg-sidebar);
+  color:var(--text-dark);
+  display:flex;
+  flex-direction:column;
+  padding:18px 14px;
+  border-right:3px solid rgba(0,0,0,.08);
+}
+
+.sidebar-title{
+  font-size:20px;
+  margin-bottom:10px;
+}
+
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  flex:1;
+}
+
+.nav button{
+  border:none;
+  border-radius:10px;
+  padding:12px;
+  background:white;
+  font-family:var(--font);
+  cursor:pointer;
+  text-align:left;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+  transition:0.2s;
+}
+
+.nav button:hover{
+  background:var(--btn-green);
+}
+
+.logout button{
+  border:none;
+  border-radius:10px;
+  padding:14px;
+  background:var(--btn-red);
+  font-family:var(--font);
+  cursor:pointer;
+  color:white;
+}
+
+
+.main{
+  flex:1;
+  background:var(--bg-main);
+  padding:22px;
+}
+
+.banner{
+  background:rgba(255,255,255,.12);
+  padding:14px;
+  border-radius:12px;
+  margin-bottom:20px;
+}
+
+.profile-container{
+  display:flex;
+  gap:30px;
+  flex-wrap:wrap;
+}
+
+
+.profile-card{
+  background:var(--card);
+  color:black;
+  border-radius:12px;
+  padding:20px;
+  width:350px;
+  box-shadow:var(--shadow);
+}
+
+.profile-pic{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:rgba(0,0,0,.15);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:15px;
+  overflow:hidden;
+}
+
+.profile-pic img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.profile-info p{
+  margin:8px 0;
+}
+
+
+.stats-card{
+  background:var(--card);
+  color:black;
+  border-radius:12px;
+  padding:20px;
+  flex:1;
+  min-width:300px;
+  box-shadow:var(--shadow);
+}
+
+.stat{
+  margin-bottom:15px;
+}
+
+.stat-bar{
+  background:white;
+  border-radius:8px;
+  height:20px;
+  overflow:hidden;
+}
+
+.stat-fill{
+  height:100%;
+  background:var(--btn-green);
+  transition:width 0.4s ease;
+}
+
+.edit-btn{
+  margin-top:15px;
+  padding:10px 16px;
+  border:none;
+  border-radius:8px;
+  background:var(--btn-green);
+  cursor:pointer;
+  font-family:var(--font);
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+
+<aside class="sidebar">
+  <div class="sidebar-title">FitCompass</div>
+
+  <div class="nav">
+    <button onclick="location.href='{{ url_for('home') }}'">Home</button>
+    <button onclick="location.href='{{ url_for('profile') }}'">Profile</button>
+    <button onclick="location.href='{{ url_for('history') }}'">History</button>
+    <button onclick="location.href='{{ url_for('library') }}'">Library</button>
+    <button onclick="location.href='{{ url_for('shop') }}'">Shop</button>
+    <button onclick="location.href='{{ url_for('settings') }}'">Settings</button>
+  </div>
+
+  <div class="logout">
+    <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+  </div>
+</aside>
+
+
+<main class="main">
+
+  <div class="banner">
+    <strong>{{ username }}'s Profile</strong>
+  </div>
+
+  <div class="profile-container">
+
+   
+    <div class="profile-card">
+      <div class="profile-pic">
+        <img src="{{ url_for('static', filename='default_profile.png') }}">
+      </div>
+
+      <div class="profile-info">
+        <p><strong>Username:</strong> {{ username }}</p>
+        <p><strong>Email:</strong> {{ email }}</p>
+        <p><strong>Goal:</strong> {{ goal }}</p>
+        <p><strong>Total Points:</strong> {{ points }}</p>
+        <p><strong>Workouts Per Week:</strong> {{ workouts_per_week }}</p>
+      </div>
+
+      <button onclick="location.href='{{ url_for('profileEdit') }}'">
+        Edit Profile
+      </button>
+    </div>
+
+    
+    <div class="stats-card">
+      <h3>Progress Stats</h3>
+
+      <div class="stat">
+        <p>Weekly Goal Completion ({{ goal_percent }}%)</p>
+        <div class="stat-bar">
+          <div class="stat-fill" style="width: {{ goal_percent }}%;"></div>
+        </div>
+      </div>
+
+
+    </div>
+
+  </div>
+
+</main>
+</div>
+</body>
+</html>
