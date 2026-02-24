@@ -145,6 +145,7 @@
       justify-content:center;
       align-items:center;
       background: rgba(0,0,0,.35);
+      z-index: 200;
     }
 
 
@@ -199,12 +200,12 @@
     }
 
 
-    .camera-box img {
+    .camera-box img:not(.avatar-part) {
         width: 100%;
         height: 100%;
-        object-fit: contain; /* Shows the full frame without stretching */
+        object-fit: contain; 
         display: none;
-        transform: scaleX(-1); /* Keep your mirror effect */
+        transform: scaleX(-1); 
     }
 
 
@@ -231,6 +232,26 @@
       transition: width 0.3s ease;
     }
 
+    .avatar-container {
+        position: absolute; 
+        bottom: 0;    
+        right: 0;     
+        width: 110px;    
+        height: 200px;   
+        z-index: 100;    
+    }
+    .avatar-part {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; 
+    }
+    .base  { z-index: 1; }
+    .torso { z-index: 2; }
+    .head  { z-index: 5; }
+    .arms  { z-index: 4; }
 
     /* Responsive */
     @media(max-width: 900px){
@@ -285,6 +306,12 @@
       <div class="right-panel">
         <div class="camera-box">  
               <img src="{{ url_for('webcam_feed') }}">
+          <div class="avatar-container">
+            <img src="{{ url_for('static', filename='michalis/template.png') }}" class="avatar-part base" alt="base">
+            <img src="{{ url_for('static', filename='michalis/torso-buttonup.png') }}" class="avatar-part torso" alt="shirt">
+            <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" class="avatar-part head" alt="head">
+            <img src="{{ url_for('static', filename='michalis/arms-low-buttonup.png') }}" class="avatar-part arms" id="avatar-arms" alt="arms">
+          </div>
         </div>
 
         <div class="total-rep-bar">
@@ -297,9 +324,6 @@
             <button class="btn" onclick="startSession()">start camera feed!</button>
         </div>
       </div>
-
-
-
 
   <!-- Adding a image to the bottom of the screen amshu -->
 
@@ -335,9 +359,9 @@ const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
     .map(ex => {
 
 
-        const name = ex.toLowerCase(); // normalize
+       const normalizedName = ex.toLowerCase().replace(/[\s-]/g, "");
 
-        if (["jumpingjacks", "running"].includes(name)) {
+        if (["jumpingjacks", "running"].includes(normalizedName)) {
             return { name: name, type: "timer", duration: 30 };
         }
 
@@ -403,7 +427,8 @@ function applyExerciseUIMode(ex) {
     if (ex.type === 'timer') {
         document.getElementById('timer_card').style.display = 'block';
         document.getElementById('reps_card').style.display = 'none';
-        document.getElementById('current_state').innerText = "TIMER";
+        const stateEl = document.getElementById('current_state');
+        if(stateEl) stateEl.innerText = "TIMER";
     } else {
         document.getElementById('timer_card').style.display = 'none';
         document.getElementById('reps_card').style.display = 'block';
