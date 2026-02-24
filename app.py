@@ -711,6 +711,8 @@ lungeController = LungeController()
 runningController = RunningController()
 jumpingjacksController = JumpingJacksController()
 pushupController = PushUpController()
+supermanController = SupermanController()
+glutebridgeController = GluteBridgeController()
 
 class ExerciseManager:
 
@@ -721,7 +723,10 @@ class ExerciseManager:
             "lunges": LungeController(),
             "pushups" : PushUpController(),
             "running" : RunningController(), 
-            "jumpingjacks" : JumpingJacksController()
+            "jumpingjacks" : JumpingJacksController(),
+            "glutebridges" : GluteBridgeController(),
+            "supermans" : SupermanController()
+
         }
 
         self.exercises = {}
@@ -897,7 +902,6 @@ def generate_workout_plan(goal, days_per_week, body_part):
             ex = pick_random(cardio, 1)[0]
             plan += format_exercise(ex, "cardio", day_key)
 
-
         elif mode == "balanced":
             ex = pick_random(cardio, 1)[0]
             plan += format_exercise(ex, "cardio", day_key)
@@ -908,8 +912,8 @@ def generate_workout_plan(goal, days_per_week, body_part):
             ex = pick_random(upper_body, 1)[0]
             plan += format_exercise(ex, "upper_body", day_key)
 
-            for ex in pick_random(upper_body,2):
-                plan += format_exercise(ex, "cardio", day_key)
+            for ex in pick_random(core,2):
+                plan += format_exercise(ex, "core", day_key)
         
         elif mode =="strength":
 
@@ -1110,9 +1114,9 @@ def home():
 
 
 @app.route('/workoutSession')
-def workoutSession():
 
-    
+#when workoutsession is loaded, grab initialize exercise manager with exercises
+def workoutSession():
     if "username" not in session:
         return redirect(url_for("login"))
     user_id = session["user_id"]
@@ -1124,6 +1128,28 @@ def workoutSession():
     loggedInUsers[user_id].exerciseManager = ExerciseManager(today_exercises)
 
     return render_template("workoutSession.html", exercises=today_exercises)
+
+@app.route('/library', methods=['GET','POST'])
+def library():
+
+    if "username" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+
+    if request.method=='POST':
+        choice =request.form.get('routines')
+        
+        routines = {
+            "I_Love_Pushups": ["pushups", "running", "pushups","running","pushups","running","pushups"],
+            "Legs_Are_Great": ["squats", "lunges", "glutebridges","running","squats", "lunges", "glutebridges"],
+        }
+        if choice in routines:
+            chosen_routine=routines[choice]
+
+            loggedInUsers[user_id].exerciseManager = ExerciseManager(chosen_routine)
+            return render_template("workoutSession.html", exercises=chosen_routine)
+    return render_template("library.html")
+
 
 @app.route('/workoutcomplete')
 def workoutcomplete():
@@ -1145,9 +1171,6 @@ def profile():
 def history():
     return render_template("workoutLog.html")
 
-@app.route('/library')
-def library():
-    return "Library page coming soon"
 
 @app.route('/shop')
 def shop():
