@@ -362,11 +362,11 @@ const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
        const normalizedName = ex.toLowerCase().replace(/[\s-]/g, "");
 
         if (["jumpingjacks", "running"].includes(normalizedName)) {
-            return { name: name, type: "timer", duration: 30 };
+            return { name: ex, type: "timer", duration: 30 };
         }
 
 
-        return { name: name, type: "reps", target: 3 };
+        return { name: ex, type: "reps", target: 3 };
     });
 
 
