@@ -80,9 +80,6 @@ class User:
         self.latest_detection = None
         self.currentExercise= None
         self.exerciseManager = None
-        
-        
-
 
 @app.route('/webcam_feed')
 def webcam_feed():
@@ -120,7 +117,6 @@ class SitUpState:
     DOWN = "DOWN"
     RISING="RISING"
     TOP="TOP"
-
 class SitUpController:
     def __init__(self):
         self.state=SitUpState.IDLE
@@ -209,7 +205,6 @@ class SquatState:
     BEGIN = "BEGIN"
     DOWN = "DOWN"
     RISE="RISE"
-
 class SquatController:
     def __init__(self):
         self.state = SquatState.IDLE
@@ -447,7 +442,6 @@ class LungeController:
 
 class RunningState:
     TIMER = "TIMER"
-
 class RunningController:
     def __init__(self):
         self.state = RunningState.TIMER
@@ -464,7 +458,6 @@ class RunningController:
 
 class JumpingJackState:
     TIMER = "TIMER"
-
 class JumpingJacksController:
     def __init__(self):
         self.state = JumpingJackState.TIMER
@@ -481,7 +474,6 @@ class JumpingJacksController:
 class GluteBridgeState():
     IDLE = "IDLE"
     UP = "UP"
-
 class GluteBridgeController():
     def __init__(self):
         self.state = GluteBridgeState.IDLE
@@ -547,11 +539,9 @@ class GluteBridgeController():
             
         return annotated_image
 
-
 class SupermanState:
     IDLE = "IDLE"
     UP = "UP"
-
 class SupermanController:
     def __init__(self):
         self.state = SupermanState.IDLE
@@ -598,10 +588,6 @@ class SupermanController:
             cv2.line(annotated_image, hip, knee, color, 4)
         return annotated_image
 
-# -----------------------
-# PUSHUP TOLERANCE
-# -----------------------
-
 IDEAL_BODY_ANGLE = 180
 BODY_ANGLE_TOLERANCE = 15     # +-15 allowed
 
@@ -615,8 +601,6 @@ class PushUpState:
     IDLE = "IDLE"
     DOWN = "DOWN"
     UP   = "UP"
-
-
 class PushUpController:
     def __init__(self):
         self.state = PushUpState.IDLE
@@ -725,28 +709,28 @@ class PushUpController:
 
         return annotated_image
 
-
-
-
 sitUpController = SitUpController()
 squatController = SquatController()
 lungeController = LungeController()
 runningController = RunningController()
 jumpingjacksController = JumpingJacksController()
 pushupController = PushUpController()
-
+supermanController = SupermanController()
+glutebridgeController = GluteBridgeController()
 
 class ExerciseManager:
 
     def __init__(self, today_exercises):
-
         self.all_controllers = {
             "squats": SquatController(),
             "situps": SitUpController(),
             "lunges": LungeController(),
             "pushups" : PushUpController(),
             "running" : RunningController(), 
-            "jumpingjacks" : JumpingJacksController()
+            "jumpingjacks" : JumpingJacksController(),
+            "glutebridges" : GluteBridgeController(),
+            "supermans" : SupermanController()
+
         }
 
         self.exercises = {}
@@ -773,12 +757,6 @@ class ExerciseManager:
         clean = normalize_name(name)
         if clean in self.exercises:
             self.currentExercise = clean
-
-##exerciseManager=exerciseManager()
-#exerciseManager = None
-
-
-
 
 @app.route('/switch_exercise', methods=["POST"])
 def switch_exercise():
@@ -831,7 +809,6 @@ def get_exercise_data():
         multiple_detected=multiple_detected
     )
 
-
 def generate_frames(user_id):
     if not user_id in loggedInUsers:
         return
@@ -859,22 +836,13 @@ def generate_frames(user_id):
         yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
-#------------------
-#Workout
-#---------------
-
 all_selected_exercises = {}
 
 # ---------------- EXERCISES ----------------
-
-##upper_body = ["Push-ups", "V pushups", "Inverted Rows", "Pull-ups"]
-upper_body = ["Push-ups"]
-##lower_body = ["squats", "lunges", "Glute Bridges", "Calf Raises"]
-lower_body = ["squats", "lunges"]
-core = ["Sit-ups", "Supermans"]
-time_core = ["Plank"] 
-cardio = ["Jumping Jacks",  "Running"]
-
+upper_body = ["pushups"]
+lower_body = ["squats", "lunges","glutebridges"]
+core = ["situps", "supermans"]
+cardio = ["jumpingjacks",  "running"]
 
 new_people_exercises = [
     "Glute Bridges", "Running", "Jumping Jacks",
@@ -883,11 +851,12 @@ new_people_exercises = [
 
 # ---------------- REPS ----------------
 
+#these are categories of exercises and suggested rep counts
 rep_ranges = {
     "Beginner": {
-        "strength": "3 x 12 reps",
-        "core": "3 x 12 reps", 
-        "long core": "1:30 min",
+        "core": "3 x 12 reps",
+        "lower_body": "3 x 12 reps", 
+        "upper_body": "3 x 12 reps", 
         "cardio": "45 seconds"
     }
 }
@@ -907,11 +876,8 @@ def format_exercise(ex, category, day_key):
         rows += f"{ex:<20} | {category:<10} | {reps[category]}\n"
     return rows
 
-
 # ---------------- GENERATE PLAN ----------------
-
 def generate_workout_plan(goal, days_per_week, body_part):
-
     all_selected_exercises.clear()
     plan = f"Goal: {goal}\nWorkouts per Week: {days_per_week}\n\n"
 
@@ -919,6 +885,7 @@ def generate_workout_plan(goal, days_per_week, body_part):
         "get fit": "balanced",
         "lose weight": "cardio",
         "gain strength": "strength"
+
     }.get(goal, "balanced")
 
     body_map = {
@@ -936,27 +903,40 @@ def generate_workout_plan(goal, days_per_week, body_part):
         plan += f"DAY {day}\n"
 
         if mode == "cardio":
-            for ex in pick_random(cardio, 2):
-                plan += format_exercise(ex, "cardio", day_key)
-            for ex in pick_random(focus, 2):
-                plan += format_exercise(ex, "strength", day_key)
+            ex = pick_random(cardio, 1)[0]
+            plan += format_exercise(ex, "cardio", day_key)
 
-        else:
-            for ex in pick_random(focus, 2):
-                plan += format_exercise(ex, "strength", day_key)
-            plan += format_exercise(random.choice(cardio), "cardio", day_key)
+        elif mode == "balanced":
+            ex = pick_random(cardio, 1)[0]
+            plan += format_exercise(ex, "cardio", day_key)
 
-        plan += "\n"
+            for ex in pick_random(lower_body,2):
+                plan += format_exercise(ex, "lower_body", day_key)
+            
+            ex = pick_random(upper_body, 1)[0]
+            plan += format_exercise(ex, "upper_body", day_key)
+
+            for ex in pick_random(core,2):
+                plan += format_exercise(ex, "core", day_key)
+        
+        elif mode =="strength":
+
+            for ex in pick_random(lower_body,2): #pick 2 lower body
+                plan += format_exercise(ex, "lower_body", day_key)
+
+            for ex in pick_random(core,2): #pick 2 core
+                plan += format_exercise(ex, "core", day_key)
+
+            for ex in pick_random(upper_body,1): #pick 1 upper body
+                plan += format_exercise(ex, "upper_body", day_key)
 
     return plan
 
 
 
 def get_user_exercises(username):
-
     conn = get_db_connection()
     cursor = conn.cursor()
-
     cursor.execute("""
         SELECT goal_other, workouts_per_week
         FROM UserLogins
@@ -1067,9 +1047,6 @@ def login():
 
     return render_template('login.html')
 
-# -------------------------
-# Register + Intake Quiz
-# -------------------------
 @app.route('/register', methods=['GET', 'POST'])
 def register():
 
@@ -1158,9 +1135,9 @@ def home():
 
 
 @app.route('/workoutSession')
-def workoutSession():
 
-    
+#when workoutsession is loaded, grab initialize exercise manager with exercises
+def workoutSession():
     if "username" not in session:
         return redirect(url_for("login"))
     user_id = session["user_id"]
@@ -1173,6 +1150,26 @@ def workoutSession():
 
     return render_template("workoutSession.html", exercises=today_exercises)
 
+@app.route('/library', methods=['GET','POST'])
+def library():
+
+    if "username" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+
+    if request.method=='POST':
+        choice =request.form.get('routines')
+        
+        routines = {
+            "I_Love_Pushups": ["pushups", "running", "pushups","running","pushups","running","pushups"],
+            "Legs_Are_Great": ["squats", "lunges", "glutebridges","running","squats", "lunges", "glutebridges"],
+        }
+        if choice in routines:
+            chosen_routine=routines[choice]
+
+            loggedInUsers[user_id].exerciseManager = ExerciseManager(chosen_routine)
+            return render_template("workoutSession.html", exercises=chosen_routine)
+    return render_template("library.html")
 
 
 @app.route('/workoutcomplete')
@@ -1316,9 +1313,6 @@ def profileEdit():
 def history():
     return render_template("workoutLog.html")
 
-@app.route('/library')
-def library():
-    return "Library page coming soon"
 
 @app.route('/shop')
 def shop():

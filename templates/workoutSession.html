@@ -75,12 +75,18 @@
       display: grid;
       grid-template-columns: 1fr 1.4fr;
       gap: 26px;
-      align-items: start;
+      align-items: stretch;
     }
 
 
     /* Left column */
     .left-panel{
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .right-panel{
       display: flex;
       flex-direction: column;
       gap: 18px;
@@ -139,6 +145,7 @@
       justify-content:center;
       align-items:center;
       background: rgba(0,0,0,.35);
+      z-index: 200;
     }
 
 
@@ -155,11 +162,10 @@
 
 
     .exercise-preview{
-      position: fixed;
+      margin-top: auto;  /* pushes preview to the bottom of left panel */
+
       bottom: 20px;
       left: 20px;
-      width: 700px;
-      height: 350px;
       background: rgba(0,0,0,.25);
       border-radius: 12px;
       padding: 8px;
@@ -188,29 +194,30 @@
         border-radius: 12px;
         overflow: hidden;
         width: 100%;
-        max-width: 90vh; /* Limits the width so it's not "too wide" */
+        max-width: 100vh; /* Limits the width so it's not "too wide" */
         margin: 0 auto;   /* Centers it */
         position: relative;
     }
 
 
-    .camera-box img {
+    .camera-box img:not(.avatar-part) {
         width: 100%;
         height: 100%;
-        object-fit: contain; /* Shows the full frame without stretching */
+        object-fit: contain; 
         display: none;
-        transform: scaleX(-1); /* Keep your mirror effect */
+        transform: scaleX(-1); 
     }
 
 
     /*workout progress bar*/
     .total-rep-bar{
       width: 100%;
-      height: 25px;
+      height: 50px;
       background: rgba(255,255,255,.25);
       border-radius: 12px;
       overflow: hidden;
       margin: 20px;
+      line-height: 50px;
     }
 
 
@@ -219,12 +226,32 @@
       width: 0%;
       background: limegreen;
       text-align: center;
-      line-height: 25px;
+      line-height: 50px;
       color: black;
       font-weight: bold;
       transition: width 0.3s ease;
     }
 
+    .avatar-container {
+        position: absolute; 
+        bottom: 0;    
+        right: 0;     
+        width: 110px;    
+        height: 200px;   
+        z-index: 100;    
+    }
+    .avatar-part {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; 
+    }
+    .base  { z-index: 1; }
+    .torso { z-index: 2; }
+    .head  { z-index: 5; }
+    .arms  { z-index: 4; }
 
     /* Responsive */
     @media(max-width: 900px){
@@ -251,7 +278,6 @@
 
 <div class="content">
 
-
       <div class="left-panel">
         <div class="info-card">
           <h2 id="exercise_label">Current Exercise</h2>
@@ -269,33 +295,40 @@
           <h2>Time Remaining</h2>
           <h3 id="timer_display">30</h3>
         </div>
-        <h1 id="current_state">state</h1>
+        <!-- <h1 id="current_state">state</h1> -->
+
+          <div class="exercise-preview">
+            <img id="exercise_gif" src="{{ url_for('static', filename='squats.gif') }}">
+          </div>
+
         </div>
 
-
-      <div class="camera-box">  
-             <img src="{{ url_for('webcam_feed') }}">
-      </div>
-         <div id="overlay">
-        <button class="btn" onclick="startSession()">start camera feed!</button>
-      </div>
-  </div>
-
-
-  <div class="total-rep-bar">
-    <div id="total-rep-percentage" class="total-rep-percentage">
-          0%
+      <div class="right-panel">
+        <div class="camera-box">  
+              <img src="{{ url_for('webcam_feed') }}">
+          <div class="avatar-container">
+            <img src="{{ url_for('static', filename='michalis/template.png') }}" class="avatar-part base" alt="base">
+            <img src="{{ url_for('static', filename='michalis/torso-buttonup.png') }}" class="avatar-part torso" alt="shirt">
+            <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" class="avatar-part head" alt="head">
+            <img src="{{ url_for('static', filename='michalis/arms-low-buttonup.png') }}" class="avatar-part arms" id="avatar-arms" alt="arms">
+          </div>
         </div>
+
+        <div class="total-rep-bar">
+            <div id="total-rep-percentage" class="total-rep-percentage">
+              0%
+            </div>  
+
+        </div> 
+          <div id="overlay">
+            <button class="btn" onclick="startSession()">start camera feed!</button>
+        </div>
+      </div>
+
   <!-- Adding a image to the bottom of the screen amshu -->
-  <div class="exercise-preview">
-    <img id="exercise_gif" src="{{ url_for('static', filename='squats.gif') }}">
-  </div>
 
 
-   
-    <!-- <button onclick="changeWorkout('squats')">count squats</button>
-    <button onclick="changeWorkout('situps')">count situps</button>
-    <button onclick="changeWorkout('lunges')">count lunges</button> -->
+
   </main>
 
 
@@ -310,30 +343,30 @@ const gifMap = {
   squats: "{{ url_for('static', filename='squats.gif') }}",
   lunges: "{{ url_for('static', filename='lunges.gif') }}",
   situps: "{{ url_for('static', filename='situps.gif') }}",
-  jumpingjacks: "{{ url_for('static', filename='jumpinjacks.gif') }}",
+  jumpingjacks: "{{ url_for('static', filename='jumpingjacks.gif') }}",
   pushups: "{{ url_for('static', filename='pushups.gif') }}",
-  vpushups: "{{ url_for('static', filename='vpushup.gif') }}",
   glutebridges: "{{ url_for('static', filename='glutebridges.gif') }}",
-  running: "{{ url_for('static', filename='running.gif') }}"
+  running: "{{ url_for('static', filename='running.gif') }}",
+  supermans: "{{ url_for('static', filename='supermans.gif') }}"
+
 };
 
 
 /* ---------------- WORKOUT ROUTINE ---------------- */
 
-
+//hardcoded durations and reps, someone please change this
 const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
     .map(ex => {
 
 
-        const name = ex.toLowerCase(); // normalize
+       const normalizedName = ex.toLowerCase().replace(/[\s-]/g, "");
 
-
-        if (["jumping jacks", "running", "burpees"].includes(name)) {
-            return { name: name, type: "timer", duration: 30 };
+        if (["jumpingjacks", "running"].includes(normalizedName)) {
+            return { name: ex, type: "timer", duration: 30 };
         }
 
 
-        return { name: name, type: "reps", target: 3 };
+        return { name: ex, type: "reps", target: 3 };
     });
 
 
@@ -394,7 +427,8 @@ function applyExerciseUIMode(ex) {
     if (ex.type === 'timer') {
         document.getElementById('timer_card').style.display = 'block';
         document.getElementById('reps_card').style.display = 'none';
-        document.getElementById('current_state').innerText = "TIMER";
+        const stateEl = document.getElementById('current_state');
+        if(stateEl) stateEl.innerText = "TIMER";
     } else {
         document.getElementById('timer_card').style.display = 'none';
         document.getElementById('reps_card').style.display = 'block';
