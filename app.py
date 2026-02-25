@@ -41,7 +41,9 @@ def get_db_connection():
 connection = get_db_connection()
 cursor = connection.cursor()
 
-
+# Drop old table if it exists (WARNING: deletes old user data!) Only do when adding columns to the table and want total reset
+cursor.execute("DROP TABLE IF EXISTS UserLogins")
+cursor.execute("DROP TABLE IF EXISTS UserOutfits")
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS UserLogins(
@@ -53,18 +55,24 @@ CREATE TABLE IF NOT EXISTS UserLogins(
     goal_other TEXT,
     workouts_per_week INTEGER,
     body_part TEXT,
-    workout_plan TEXT,
     coins INTEGER DEFAULT 1000,
     history TEXT DEFAULT '[]',
-    outfits TEXT DEFAULT '[]',
-    current_workout TEXT
+    current_workout TEXT,
+    equipped_outfit TEXT,
+    workout_plan TEXT
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS UserOutfits(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    outfit_name TEXT,
+    FOREIGN KEY(user_id) REFERENCES UserLogins(id)
 )
 """)
 
 connection.commit()
-
-
-
 connection.close()
 
 # Webcam setup
@@ -1329,7 +1337,113 @@ def history():
 
 @app.route('/shop')
 def shop():
-    return render_template("shop.html")
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT coins, equipped_outfit FROM UserLogins WHERE id=?", (session["user_id"],))
+    user = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT outfit_name FROM UserOutfits
+        WHERE user_id=?
+    """, (session["user_id"],))
+
+    owned = [row["outfit_name"] for row in cursor.fetchall()]
+
+    conn.close()
+
+    return render_template(
+        "shop.html",
+        coins=user["coins"],
+        owned=owned,
+        equipped=user["equipped_outfit"]
+    )
+
+
+@app.route('/buy_costume', methods=["POST"])
+def buy_costume():
+    if "user_id" not in session:
+        return jsonify(status="error")
+
+    data = request.get_json()
+    outfit = data["costume"]
+    cost = data["cost"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Get user coins
+    cursor.execute("SELECT coins FROM UserLogins WHERE id=?", (session["user_id"],))
+    user = cursor.fetchone()
+
+    if user["coins"] < cost:
+        conn.close()
+        return jsonify(status="not_enough")
+
+    # Check if already owned
+    cursor.execute("""
+        SELECT * FROM UserOutfits
+        WHERE user_id=? AND outfit_name=?
+    """, (session["user_id"], outfit))
+
+    if cursor.fetchone():
+        conn.close()
+        return jsonify(status="already_owned")
+
+    # Deduct coins
+    new_coins = user["coins"] - cost
+
+    cursor.execute("""
+        UPDATE UserLogins
+        SET coins=?
+        WHERE id=?
+    """, (new_coins, session["user_id"]))
+
+    # Insert outfit ownership
+    cursor.execute("""
+        INSERT INTO UserOutfits (user_id, outfit_name)
+        VALUES (?, ?)
+    """, (session["user_id"], outfit))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(status="success", new_coins=new_coins)
+
+@app.route('/wear_costume', methods=["POST"])
+def wear_costume():
+    if "user_id" not in session:
+        return jsonify(status="error")
+
+    data = request.get_json()
+    outfit = data["costume"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Ensure user owns it
+    cursor.execute("""
+        SELECT * FROM UserOutfits
+        WHERE user_id=? AND outfit_name=?
+    """, (session["user_id"], outfit))
+
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify(status="not_owned")
+
+    cursor.execute("""
+        UPDATE UserLogins
+        SET equipped_outfit=?
+        WHERE id=?
+    """, (outfit, session["user_id"]))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(status="success")
 
 @app.route('/settings')
 def settings():
