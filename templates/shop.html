@@ -1,305 +1,288 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FitCompass - Shop</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitCompass - Shop</title>
+    <style>
+        :root{
+            --bg-main:#1f4d69;
+            --bg-sidebar:#d8eff4;
+            --btn-green:#a9d99b;
+            --btn-red:#d83a4a;
+            --card:#d8eff4;
+            --text-dark:#0f1a1f;
+            --shadow:0 10px 30px rgba(0,0,0,.18);
+            --radius:14px;
+            --font:ui-monospace, Menlo, Consolas, monospace;
+        }
 
-<style>
-:root{
-  --bg-main:#1f4d69;
-  --bg-sidebar:#d8eff4;
-  --btn-green:#a9d99b;
-  --btn-red:#d83a4a;
-  --card:#d8eff4;
-  --text-dark:#0f1a1f;
-  --shadow:0 10px 30px rgba(0,0,0,.18);
-  --radius:14px;
-  --font:ui-monospace, Menlo, Consolas, monospace;
-}
+        *{ box-sizing:border-box; }
 
-*{ box-sizing:border-box; }
+        body{
+            margin:0;
+            font-family:var(--font);
+            background:#0f2330;
+            color:white;
+            min-height:100vh;
+        }
 
-body{
-  margin:0;
-  font-family:var(--font);
-  background:#0f2330;
-  color:white;
-  min-height:100vh;
-}
+        .app{ display:flex; min-height:100vh; }
 
-.app{ display:flex; min-height:100vh; }
+        /* SIDEBAR */
+        .sidebar{
+            width:260px;
+            background:var(--bg-sidebar);
+            color:var(--text-dark);
+            display:flex;
+            flex-direction:column;
+            padding:18px 14px;
+            border-right:3px solid rgba(0,0,0,.08);
+        }
 
-/* ===== SIDEBAR ===== */
-.sidebar{
-  width:260px;
-  background:var(--bg-sidebar);
-  color:var(--text-dark);
-  display:flex;
-  flex-direction:column;
-  padding:18px 14px;
-  border-right:3px solid rgba(0,0,0,.08);
-}
+        .sidebar-title{ font-size:20px; margin-bottom:10px; }
 
-.sidebar-title{
-  font-size:20px;
-  margin-bottom:10px;
-}
+        .nav{ display:flex; flex-direction:column; gap:10px; flex:1; }
 
-.nav{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  flex:1;
-}
+        .nav button{
+            border:none;
+            border-radius:10px;
+            padding:12px;
+            background:white;
+            font-family:var(--font);
+            cursor:pointer;
+            text-align:left;
+            box-shadow:0 4px 10px rgba(0,0,0,.08);
+        }
 
-.nav button{
-  border:none;
-  border-radius:10px;
-  padding:12px;
-  background:white;
-  font-family:var(--font);
-  cursor:pointer;
-  text-align:left;
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
-}
+        .logout button{
+            border:none;
+            border-radius:10px;
+            padding:14px;
+            background:var(--btn-red);
+            font-family:var(--font);
+            cursor:pointer;
+            color: white;
+        }
 
-.logout button{
-  border:none;
-  border-radius:10px;
-  padding:14px;
-  background:var(--btn-red);
-  font-family:var(--font);
-  cursor:pointer;
-}
+        /* MAIN */
+        .main{ flex:1; background:var(--bg-main); padding:22px; }
 
-/* ===== MAIN ===== */
-.main{
-  flex:1;
-  background:var(--bg-main);
-  padding:22px;
-}
+        .banner{
+            background:rgba(255,255,255,.12);
+            padding:14px;
+            border-radius:12px;
+            margin-bottom:20px;
+        }
 
-.banner{
-  background:rgba(255,255,255,.12);
-  padding:14px;
-  border-radius:12px;
-  margin-bottom:20px;
-}
+        .top-row{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:30px;
+        }
 
-.top-row{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:30px;
-}
+        .points{
+            background:var(--btn-green);
+            padding:10px 16px;
+            border-radius:10px;
+            font-size:18px;
+            color:black;
+        }
 
-.points{
-  background:var(--btn-green);
-  padding:10px 16px;
-  border-radius:10px;
-  font-size:18px;
-  color:black;
-}
+        /* SHOP LAYOUT */
+        .shop-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:40px; }
 
-/* ===== SHOP LAYOUT ===== */
-.shop-grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:40px;
-}
+        .items{ display:flex; gap:20px; flex-wrap:wrap; }
 
-/* Costume cards */
-.items{
-  display:flex;
-  gap:20px;
-  flex-wrap:wrap;
-}
+        .card{
+            background:var(--card);
+            width:180px;
+            border-radius:12px;
+            padding:14px;
+            color:black;
+            box-shadow:var(--shadow);
+            text-align:center;
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+        }
 
-.card{
-  background:var(--card);
-  width:180px;
-  border-radius:12px;
-  padding:14px;
-  color:black;
-  box-shadow:var(--shadow);
-  text-align:center;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
+        .card img{
+            width:100%;
+            height:150px;
+            object-fit:contain;
+            background:white;
+            border-radius:10px;
+        }
 
-.card img{
-  width:100%;
-  height:150px;
-  object-fit:contain;
-  background:white;
-  border-radius:10px;
-}
+        .card button{
+            border:none;
+            border-radius:8px;
+            padding:8px;
+            font-family:var(--font);
+            cursor:pointer;
+        }
 
-.card button{
-  border:none;
-  border-radius:8px;
-  padding:8px;
-  font-family:var(--font);
-  cursor:pointer;
-}
+        .buy-btn{ background:var(--btn-green); }
+        .wear-btn{ background:#7bd1ff; }
 
-.buy-btn{
-  background:var(--btn-green);
-}
+        button:disabled{ opacity:.5; cursor:not-allowed; }
 
-.wear-btn{
-  background:#7bd1ff;
-}
+        .message{ font-size:12px; color:red; min-height: 15px;}
 
-button:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-}
+        /* AVATAR */
+        .avatar{ display:flex; justify-content:center; }
+        .avatar-box{
+            width:260px;
+            height:420px;
+            background:#3c7290;
+            border-radius:14px;
+            overflow:hidden;
+            position:relative;
+        }
 
-.message{
-  font-size:12px;
-  color:red;
-}
-
-/* ===== AVATAR ===== */
-.avatar{
-  display:flex;
-  justify-content:center;
-}
-
-.avatar-box{
-  width:260px;
-  height:420px;
-  background:#3c7290;
-  border-radius:14px;
-  overflow:hidden;
-  position:relative;
-}
-
-.avatar-box img{
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  position:absolute;
-  top:0;
-  left:0;
-}
-</style>
+        .avatar-box img{
+            width:100%;
+            height:100%;
+            object-fit:contain;
+            position:absolute;
+            top:0;
+            left:0;
+        }
+    </style>
 </head>
-
 <body>
+
 <div class="app">
+    <aside class="sidebar">
+        <div class="sidebar-title">FitCompass</div>
+        <div class="nav">
+            <button onclick="location.href='{{ url_for('home') }}'">Home</button>
+            <button onclick="location.href='{{ url_for('profile') }}'">Profile</button>
+            <button onclick="location.href='{{ url_for('history') }}'">History</button>
+            <button onclick="location.href='{{ url_for('library') }}'">Library</button>
+            <button onclick="location.href='{{ url_for('shop') }}'">Shop</button>
+            <button onclick="location.href='{{ url_for('settings') }}'">Settings</button>
+        </div>
+        <div class="logout">
+            <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+        </div>
+    </aside>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="sidebar-title">FitCompass</div>
+    <main class="main">
+        <div class="banner"><strong>Costume Shop</strong></div>
 
-  <div class="nav">
-    <button onclick="location.href='{{ url_for('profile') }}'">Profile</button>
-    <button onclick="location.href='{{ url_for('history') }}'">History</button>
-    <button onclick="location.href='{{ url_for('library') }}'">Library</button>
-    <button onclick="location.href='{{ url_for('shop') }}'">Shop</button>
-    <button onclick="location.href='{{ url_for('settings') }}'">Settings</button>
-  </div>
-
-  <div class="logout">
-    <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
-  </div>
-</aside>
-
-<!-- MAIN CONTENT -->
-<main class="main">
-
-  <div class="banner">
-    <strong>Costume Shop</strong>
-  </div>
-
-  <div class="top-row">
-    <div></div>
-    <div class="points">
-      Points: <span id="coinDisplay">{{ coins }}</span>
-    </div>
-  </div>
-
-  <div class="shop-grid">
-
-    <!-- LEFT: COSTUMES -->
-    <div>
-      <div class="items">
-
-        <!-- FIREMAN -->
-        <div class="card">
-          <img src="{{ url_for('static', filename='costumes/fireman.png') }}">
-          <strong>Fireman</strong>
-          <div>200 coins</div>
-          <button class="buy-btn" onclick="buyCostume('fireman',200,this)">Buy</button>
-          <button class="wear-btn" onclick="wearCostume('fireman')" disabled>Wear</button>
-          <div class="message"></div>
+        <div class="top-row">
+            <div></div>
+            <div class="points">
+                Points: <span id="coinDisplay">{{ coins }}</span>
+            </div>
         </div>
 
-        <!-- ASTRONAUT -->
-        <div class="card">
-          <img src="{{ url_for('static', filename='costumes/astronaut.png') }}">
-          <strong>Astronaut</strong>
-          <div>300 coins</div>
-          <button class="buy-btn" onclick="buyCostume('astronaut',300,this)">Buy</button>
-          <button class="wear-btn" onclick="wearCostume('astronaut')" disabled>Wear</button>
-          <div class="message"></div>
+        <div class="shop-grid">
+            <div>
+                <div class="items">
+                    {# List of all costumes to loop through #}
+                    {% set catalog = [
+                        ('fireman', 200), ('clown', 300), ('cowboy', 250), 
+                        ('fairy', 250), ('police', 250), ('priest', 250), 
+                        ('surfer', 250), ('bikini', 1000)
+                    ] %}
+
+                    {% for name, price in catalog %}
+                    <div class="card" id="card-{{ name }}">
+                        <img src="{{ url_for('static', filename='costumes/' + name + '.png') }}">
+                        <strong style="text-transform: capitalize;">{{ name }}</strong>
+                        <div>{{ price }} coins</div>
+                        
+                        {# Logic: If name is in 'owned' list, disable buy button and enable wear button #}
+                        <button class="buy-btn" 
+                                onclick="buyCostume('{{ name }}', {{ price }}, this)"
+                                {% if name in owned %} disabled {% endif %}>
+                            {% if name in owned %} Purchased {% else %} Buy {% endif %}
+                        </button>
+                        
+                        <button class="wear-btn" 
+                                onclick="wearCostume('{{ name }}')"
+                                {% if name not in owned %} disabled {% endif %}>
+                            Wear
+                        </button>
+                        <div class="message"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="avatar">
+                <div class="avatar-box">
+                    <img src="{{ url_for('static', filename='michalis/template.png') }}">
+                    <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}">
+                    {# Show the equipped outfit on load if one exists #}
+                    <img id="costume-layer" src="{{ url_for('static', filename='costumes/' + equipped + '.png') if equipped else '' }}">
+                </div>
+            </div>
         </div>
-
-        <!-- COWBOY -->
-        <div class="card">
-          <img src="{{ url_for('static', filename='costumes/cowboy.png') }}">
-          <strong>Cowboy</strong>
-          <div>250 coins</div>
-          <button class="buy-btn" onclick="buyCostume('cowboy',250,this)">Buy</button>
-          <button class="wear-btn" onclick="wearCostume('cowboy')" disabled>Wear</button>
-          <div class="message"></div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- RIGHT: AVATAR -->
-    <div class="avatar">
-      <div class="avatar-box">
-        <img src="{{ url_for('static', filename='michalis/template.png') }}">
-        <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}">
-        <img id="costume-layer">
-      </div>
-    </div>
-
-  </div>
-
-</main>
+    </main>
 </div>
 
 <script>
-let userCoins = {{ coins }};
+    // These variables keep track of state while the user is on the page
+    let userCoins = {{ coins }};
 
-function buyCostume(name, price, button){
-  const card = button.parentElement;
-  const wearBtn = card.querySelector(".wear-btn");
-  const message = card.querySelector(".message");
+    async function buyCostume(name, price, button) {
+        const card = document.getElementById(`card-${name}`);
+        const wearBtn = card.querySelector(".wear-btn");
+        const message = card.querySelector(".message");
 
-  if(userCoins >= price){
-    userCoins -= price;
-    document.getElementById("coinDisplay").innerText = userCoins;
-    button.disabled = true;
-    button.innerText = "Purchased";
-    wearBtn.disabled = false;
-    message.innerText = "";
-  } else {
-    message.innerText = "Not enough points!";
-  }
-}
+        try {
+            const response = await fetch('/buy_costume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ costume: name, cost: price })
+            });
 
-function wearCostume(name){
-  document.getElementById("costume-layer").src =
-    `/static/costumes/${name}.png`;
-}
+            const result = await response.json();
+
+            if (result.status === "success") {
+                // Update coins in UI
+                userCoins = result.new_coins;
+                document.getElementById("coinDisplay").innerText = userCoins;
+                
+                // Update buttons
+                button.disabled = true;
+                button.innerText = "Purchased";
+                wearBtn.disabled = false;
+                message.innerText = "";
+            } else if (result.status === "not_enough") {
+                message.innerText = "Not enough points!";
+            } else if (result.status === "already_owned") {
+                message.innerText = "Already owned!";
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            message.innerText = "Server error.";
+        }
+    }
+
+    async function wearCostume(name) {
+        try {
+            const response = await fetch('/wear_costume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ costume: name })
+            });
+
+            const result = await response.json();
+
+            if (result.status === "success") {
+                // Update the avatar image instantly
+                document.getElementById("costume-layer").src = `/static/costumes/${name}.png`;
+            }
+        } catch (error) {
+            console.error("Error wearing costume:", error);
+        }
+    }
 </script>
 
 </body>
