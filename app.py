@@ -42,8 +42,8 @@ connection = get_db_connection()
 cursor = connection.cursor()
 
 # Drop old table if it exists (WARNING: deletes old user data!) Only do when adding columns to the table and want total reset
-#cursor.execute("DROP TABLE IF EXISTS UserLogins")
-#cursor.execute("DROP TABLE IF EXISTS UserOutfits")
+cursor.execute("DROP TABLE IF EXISTS UserLogins")
+cursor.execute("DROP TABLE IF EXISTS UserOutfits")
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS UserLogins(

@@ -14,7 +14,7 @@
             --text-dark:#0f1a1f;
             --shadow:0 10px 30px rgba(0,0,0,.18);
             --radius:14px;
-            --font:ui-monospace, Menlo, Consolas, monospace;
+            --font:ui-monospace, monospace;
         }
 
         *{ box-sizing:border-box; }
@@ -215,13 +215,33 @@
             </div>
 
             <div class="avatar">
-                <div class="avatar-box">
-                    <img src="{{ url_for('static', filename='michalis/template.png') }}">
-                    <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}">
-                    {# Show the equipped outfit on load if one exists #}
-                    <img id="costume-layer" src="{{ url_for('static', filename='costumes/' + equipped + '.png') if equipped else '' }}">
-                </div>
-            </div>
+      <div class="avatar-box">
+        <div class="michalis-layers">
+          <!-- base needs to be drawn first -->
+          <div class="base-body"> 
+            <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="template">  
+          </div>
+
+          <div class="base-arms">
+            <img src="{{ url_for('static', filename='michalis/arms-low-longsleeve.png') }}" alt="low arms pose">  
+          </div>
+ 
+          <div class="expression">
+            <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="slight smile">   
+          </div> 
+
+          <div class="sleeves">
+            <img src="{{ url_for('static', filename='michalis/arms-low-buttonup.png') }}" alt="low arms pose">  
+          </div>
+
+          <div class="torso">
+            <img src="{{ url_for('static', filename='michalis/torso-buttonup.png') }}" alt="low arms pose">  
+          </div>
+          
+        </div>
+        </div>
+        </div>
+        </div>
         </div>
     </main>
 </div>
