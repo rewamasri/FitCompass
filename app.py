@@ -1229,62 +1229,69 @@ def profileEdit():
 
     if request.method == "POST":
 
-        email = request.form["email"]
+        new_email = request.form["email"]
         goal = request.form["goal"]
         workouts_per_week = int(request.form["workouts_per_week"])
         body_part = request.form["body_part"]
 
+        workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
 
-        workout_plan = generate_workout_plan(goal,workouts_per_week,body_part)
+        cursor.execute(
+            "SELECT email, history FROM UserLogins WHERE username = ?",
+            (session["username"],)
+        )
+        row = cursor.fetchone()
 
-        if request.method == "POST":
+        old_email = row["email"]
 
-            email = request.form["email"]
-            goal = request.form["goal"]
-            workouts_per_week = int(request.form["workouts_per_week"])
-            body_part = request.form["body_part"]
+        cursor.execute(
+            "SELECT username FROM UserLogins WHERE email = ? AND username != ?",
+            (new_email, session["username"])
+        )
+        existing_user = cursor.fetchone()
 
-            workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+        if existing_user:
+            email_to_save = old_email
+        else:
+            email_to_save = new_email
 
-            
-            cursor.execute("SELECT history FROM UserLogins WHERE username = ?", (session["username"],))
-            row = cursor.fetchone()
+        if row and row["history"]:
+            history = json.loads(row["history"])
+        else:
+            history = []
 
-            if row and row["history"]:
-                history = json.loads(row["history"])
-            else:
-                history = []
+        history.append(workout_plan)
+        updated_history = json.dumps(history)
 
-            # add history
-            history.append(workout_plan)
-            updated_history = json.dumps(history)
+        cursor.execute("""
+            UPDATE UserLogins
+            SET email = ?, 
+                goal = ?, 
+                workouts_per_week = ?, 
+                body_part = ?, 
+                workout_plan = ?,
+                history = ?
+            WHERE username = ?
+        """, (
+            email_to_save,
+            goal,
+            workouts_per_week,
+            body_part,
+            workout_plan,
+            updated_history,
+            session["username"]
+        ))
 
-            cursor.execute("""
-                UPDATE UserLogins
-                SET email = ?, 
-                    goal = ?, 
-                    workouts_per_week = ?, 
-                    body_part = ?, 
-                    workout_plan = ?,
-                    history = ?
-                WHERE username = ?
-            """, (
-                email,
-                goal,
-                workouts_per_week,
-                body_part,
-                workout_plan,
-                updated_history,
-                session["username"]
-            ))
+        conn.commit()
+        conn.close()
 
-            conn.commit()
-            conn.close()
+        if existing_user:
+            flash("email already exists. Kept your old email. Profile updated!")
+        else:
+            flash("profile updated and workout plan added to history!")
 
-            flash("Profile updated and workout plan added to history!")
-            return redirect(url_for("profile"))
+        return redirect(url_for("profile"))
 
-   
     cursor.execute("""
         SELECT email, goal, goal_other,
                workouts_per_week, 
