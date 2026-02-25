@@ -87,31 +87,39 @@
       margin: 10px 0 16px;
       color: var(--text-light);
     }
+    .workout-card {
+      display: flex;  
+      justify-content: space-between;            
+      align-items: center;           
+      background-color: rgba(255, 255, 255, 0.05); 
+      border-radius: 8px;        
+      padding: 15px 20px;      
+      margin-bottom: 10px;     
+    }
+
+    .card-content{
+            display: block;             
+
+    }
 
     .grid{
       display: grid;
-      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 22px;
       align-items: stretch;
       margin-bottom: 22px;
     }
 
-    .title{
-      height: 140px;
-      border-radius: 2px;
-      background: var(--card);
-      border: 2px solid rgba(0,0,0,.18);
-      box-shadow: 0 10px 20px rgba(0,0,0,.18);
+    .title {
+      background: #d8eff4; /* Using your variable color */
+      color: #0f1a1f;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: bold;
       cursor: pointer;
-      color: rgba(255,255,255,.92);
       font-family: var(--font);
-      font-size: 26px;
-      line-height: 1.15;
-      display: grid;
-      place-items: center;
-      text-align: center;
-      padding: 10px;
-      transition: transform .06s ease, filter .12s ease;
+      font-size: 16px;
     }
     .title:hover{ filter: brightness(1.05); }
     .title:active{ transform: translateY(1px); }
@@ -235,7 +243,6 @@
         <button type="button" onclick="navigateTo('{{ url_for('shop') }}')">shop</button>
         <button type="button" onclick="navigateTo('{{ url_for('library') }}')">library</button>
       </nav>
-
       <div class="logout">
         <button type="button" onclick="navigateTo('{{ url_for('logout') }}')">logout</button>
       </div>
@@ -246,38 +253,63 @@
         <button class="sidebar-toggle" type="button" onclick="openSidebar()" aria-label="Open sidebar">☰</button>
         <h1>All Workouts</h1>
       </header>
-
       <div class="content">
         <section class="section">
-          <div class="section-title">Arms</div>
+          <div class="section-title">Beginner</div>
           <form method="POST" action="{{ url_for('library') }}">
-
             <div class="grid">
-              <button class="title" type="submit" name="routines" value="I_Love_Pushups">I Love Push ups</button>           
-              <button class="title" type="submit" name="routines" value="Legs_Are_Great">Legs Are Great</button>           
-            <div class="divider"></div>
+              <div class="workout-card">
+                <div class="card-content">
+                  <h3>I Love Push ups</h3>
+                  <ul>
+                    <li>3 x Pushups</li>
+                    <li>45 second run</li>
+                    <li>3 x Pushups</li>
+                    <li>45 second run</li>
+                    <li>3 x Pushups</li>
+                    <li>45 second run</li>
+                    <li>3 x Pushups</li>
+                  </ul>
+                </div>
+                  <button class="title" type="submit" name="routines" value="I_Love_Pushups">Start</button>  
+
+              </div>   
+              <div class="workout-card">
+                    <div class="card-content">
+                        <h3>Cardio Cardio Cardio!</h3>
+                        <ul>
+                          <li>45 second jog</li>
+                          <li>45 second jumping jacks</li>
+                          <li>3 x lunges</li>
+                          <li>45 second jog</li>
+                          <li>45 second jumping jacks</li>
+                          <li>3 x lunges</li>
+                        </ul>
+                    </div>   
+                  <button class="title" type="submit" name="routines" value="cardio_cardio_cardio">Start</button> 
+              </div>     
+              
+              <div class="workout-card">
+                    <div class="card-content">
+                        <h3>Leg day</h3>
+                        <ul>
+                          <li>3 x squats</li>
+                          <li>3 x lunges</li>
+                          <li>3 x glute bridges</li>
+                          <li>45 second jog</li>
+                          <li>3 x squats</li>
+                          <li>3 x lunges</li>
+                          <li>3 x glute bridges</li>
+                        </ul>
+                    </div>   
+                  <button class="title" type="submit" name="routines" value="Legs_Are_Great">Start</button> 
+              </div>   
           </section>
-
-        <section class="section">
-          <div class="section-title">Legs</div>
-          <div class="grid">
-            <button class="title" type="button" onclick="location.href='/workout/legs1'">[workout<br/>name]</button>
-            <button class="title" type="button" onclick="location.href='/workout/legs2'">[workout<br/>name]</button>
-            <button class="title" type="button" onclick="location.href='/workout/legs3'">[workout<br/>name]</button>
-            <button class="title" type="button" onclick="location.href='/workout/legs4'">[workout<br/>name]</button>
-          </div>
-          <div class="divider"></div>
+                <div class="divider"></div>
+      <section class="section">
+          <div class="section-title">Intermediate</div>
         </section>
-
-        <section class="section">
-          <div class="section-title">Cardio</div>
-          <div class="grid">
-            <button class="title" type="button" onclick="location.href='/workout/cardio1'">[workout<br/>name]</button>
-            <button class="title" type="button" onclick="location.href='/workout/cardio2'">[workout<br/>name]</button>
-            <button class="title" type="button" onclick="location.href='/workout/cardio3'">[workout<br/>name]</button>
-            <button class="title" type="button" onclick="location.href='/workout/cardio4'">[workout<br/>name]</button>
-          </div>
-        </section>
+          <h3>coming soon...</h3>
       </div>
     </main>
   </div>

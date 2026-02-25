@@ -854,10 +854,10 @@ new_people_exercises = [
 #these are categories of exercises and suggested rep counts
 rep_ranges = {
     "Beginner": {
-        "core": "3 x 12 reps",
-        "lower_body": "3 x 12 reps", 
-        "upper_body": "3 x 12 reps", 
-        "cardio": "45 seconds"
+        "core": "5",
+        "lower_body": "5", 
+        "upper_body": "3", 
+        "cardio":"45"
     }
 }
 
@@ -909,7 +909,6 @@ def generate_workout_plan(goal, days_per_week, body_part):
         elif mode == "balanced":
             ex = pick_random(cardio, 1)[0]
             plan += format_exercise(ex, "cardio", day_key)
-
             for ex in pick_random(lower_body,2):
                 plan += format_exercise(ex, "lower_body", day_key)
             
@@ -976,7 +975,7 @@ def get_weekly_workouts(username):
 
     for i in range(1, 8):  # Mon–Sun
         key = f"day_{i}"
-        week[key] = [ex[0] for ex in workouts.get(key, [])]
+        week[key] = [{"name":ex[0], "reps":ex[2]} for ex in workouts.get(key, [])] #exercises are stored as "name","category" and then "reps"
 
     return week
 
@@ -997,7 +996,7 @@ def get_today_exercises(username, day_number=1):
     if day_key not in workouts:
         return []
 
-    return [ex[0] for ex in workouts[day_key]]
+    return [{"name": ex[0], "reps": ex[2]} for ex in workouts[day_key]]
 
 
 
@@ -1144,9 +1143,11 @@ def workoutSession():
 
     today_exercises = get_today_exercises(session["username"], 1)
     if not today_exercises:
-        today_exercises = ["squats"]
+        today_exercises = [{"name": "squats", "reps": "5"}]
 
-    loggedInUsers[user_id].exerciseManager = ExerciseManager(today_exercises)
+    names = [ex["name"] for ex in today_exercises]
+
+    loggedInUsers[user_id].exerciseManager = ExerciseManager(names)
 
     return render_template("workoutSession.html", exercises=today_exercises)
 
@@ -1163,12 +1164,17 @@ def library():
         routines = {
             "I_Love_Pushups": ["pushups", "running", "pushups","running","pushups","running","pushups"],
             "Legs_Are_Great": ["squats", "lunges", "glutebridges","running","squats", "lunges", "glutebridges"],
+            "cardio_cardio_cardio":["running","jumpingjacks","lunges","running","jumpingjacks","lunges"]
         }
         if choice in routines:
-            chosen_routine=routines[choice]
-
+            chosen_routine = routines[choice]
             loggedInUsers[user_id].exerciseManager = ExerciseManager(chosen_routine)
-            return render_template("workoutSession.html", exercises=chosen_routine)
+            # Convert to dict format with default reps
+            exercises = [
+                {"name": ex, "reps": "45" if ex in ["running", "jumpingjacks"] else "10"}
+                for ex in chosen_routine
+            ]
+            return render_template("workoutSession.html", exercises=exercises)
     return render_template("library.html")
 
 

@@ -357,16 +357,13 @@ const gifMap = {
 //hardcoded durations and reps, someone please change this
 const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
     .map(ex => {
-
-
-       const normalizedName = ex.toLowerCase().replace(/[\s-]/g, "");
+        const normalizedName = ex.name.toLowerCase().replace(/[\s-]/g, "");
 
         if (["jumpingjacks", "running"].includes(normalizedName)) {
-            return { name: ex, type: "timer", duration: 30 };
+            return { name: ex.name, type: "timer", duration: parseInt(ex.reps) || 30 };
         }
 
-
-        return { name: ex, type: "reps", target: 3 };
+        return { name: ex.name, type: "reps", target: parseInt(ex.reps) || 10 };
     });
 
 
@@ -390,6 +387,8 @@ let statsInterval = null;
 const totalReps = workoutRoutine
     .filter(ex => ex.type === "reps")
     .reduce((sum, ex) => sum + ex.target, 0);
+
+    console.log("Total reps:", totalReps, "Routine:", workoutRoutine);
 
 
 const bar = document.getElementById("total-rep-percentage");
@@ -540,15 +539,12 @@ function updateStats() {
     if (!current || current.type !== "reps") return;
 
 
-
-
     fetch('/get_exercise_data')
         .then(res => res.json())
         .then(data => {
 
-
             document.getElementById('rep_count').innerText = data.count;
-            document.getElementById('current_state').innerText = data.state;
+            // document.getElementById('current_state').innerText = data.state;
 
 
             if (data.count > lastCount) {
@@ -598,19 +594,18 @@ function startSession() {
     document.querySelector('.exercise-preview').style.display = 'block';
     //loads first gif
     const first = workoutRoutine[0];
-
-
     changeExercise(first.name);
     applyExerciseUIMode(first);
 
 
     if (first.type === 'timer') {
         startTimer(first.duration);
+    }else{
+
+
+      if (statsInterval) clearInterval(statsInterval);
+      statsInterval = setInterval(updateStats, 500);
     }
-
-
-    if (statsInterval) clearInterval(statsInterval);
-    statsInterval = setInterval(updateStats, 500);
 }
 
 

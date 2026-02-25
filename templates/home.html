@@ -12,7 +12,7 @@
       --bg-sidebar:#d8eff4;
       --btn-green:#a9d99b;
       --btn-red:#d83a4a;
-      --card:#d8eff4;
+      --card:#0f2330;
       --text-dark:#0f1a1f;
       --shadow:0 10px 30px rgba(0,0,0,.18);
       --radius:14px;
@@ -123,6 +123,8 @@
     }
 
 
+
+
     .logo-box{
       width:180px;
       height:180px;
@@ -158,6 +160,9 @@
       font-weight:bold;
     }
 
+    #clickdaytoview{
+      color:white;
+    }
 
     /* Workout card */
     .card{
@@ -166,10 +171,32 @@
       min-height:240px;
       border-radius:12px;
       padding:16px;
-      color:black;
+      color:rgb(0, 0, 0);
       box-shadow:var(--shadow);
       overflow-y:auto;
-      white-space:pre-wrap;
+    }
+
+    #day-title {
+      color: white;
+      margin-bottom: 10px;
+    }
+    .exercise-card {
+      background: #d8eff4; /* Subtle contrast against the main card */
+      border-left: 4px solid var(--btn-green); /* Visual accent */
+      padding: 12px 16px;
+      border-radius: 8px;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s ease;
+    }
+
+    #workout-content{
+      display:flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
     }
 
 
@@ -180,6 +207,7 @@
       padding:14px 32px;
       font-size:22px;
       cursor:pointer;
+      display: block; 
     }
   </style>
 </head>
@@ -249,9 +277,11 @@
         <strong id="day-title">Select a Day</strong>
         <hr>
         <div id="workout-content">
+          <div id="clickdaytoview">
           Click a day to view your workout.
+          </div>
+          </div>
         </div>
-      </div>
 
 
       <!-- START BUTTON -->
@@ -296,11 +326,20 @@
 
 
     if(exercises && exercises.length > 0){
-      content.innerHTML = exercises.map(e => `• ${e}`).join("<br>");
+      content.innerHTML = exercises.map(e => `
+      
+      <div class="exercise-card">
+            <span class="exercise-name">${e.name}</span>
+                  <span class="exercise-reps">${e.reps} Reps</span>
+          </div>
+              `).join("");
       startBtn.disabled = false;
       startBtn.style.opacity = "1";
     } else {
-      content.innerHTML = "Rest Day <br>Recovery, stretching, or light walking recommended.";
+      content.innerHTML = `
+    <div style="color: white; text-align: center; padding: 40px 0;">
+      <h2 style="margin: 0;">Rest Day</h2>
+    </div>`;
       startBtn.disabled = true;
       startBtn.style.opacity = ".5";
     }
