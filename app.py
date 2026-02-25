@@ -723,6 +723,8 @@ lungeController = LungeController()
 runningController = RunningController()
 jumpingjacksController = JumpingJacksController()
 pushupController = PushUpController()
+supermanController = SupermanController()
+glutebridgeController = GluteBridgeController()
 
 class ExerciseManager:
 
@@ -733,7 +735,10 @@ class ExerciseManager:
             "lunges": LungeController(),
             "pushups" : PushUpController(),
             "running" : RunningController(), 
-            "jumpingjacks" : JumpingJacksController()
+            "jumpingjacks" : JumpingJacksController(),
+            "glutebridges" : GluteBridgeController(),
+            "supermans" : SupermanController()
+
         }
 
         self.exercises = {}
@@ -909,7 +914,6 @@ def generate_workout_plan(goal, days_per_week, body_part):
             ex = pick_random(cardio, 1)[0]
             plan += format_exercise(ex, "cardio", day_key)
 
-
         elif mode == "balanced":
             ex = pick_random(cardio, 1)[0]
             plan += format_exercise(ex, "cardio", day_key)
@@ -920,8 +924,8 @@ def generate_workout_plan(goal, days_per_week, body_part):
             ex = pick_random(upper_body, 1)[0]
             plan += format_exercise(ex, "upper_body", day_key)
 
-            for ex in pick_random(upper_body,2):
-                plan += format_exercise(ex, "cardio", day_key)
+            for ex in pick_random(core,2):
+                plan += format_exercise(ex, "core", day_key)
         
         elif mode =="strength":
 
@@ -1068,19 +1072,23 @@ def register():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-
-            # Generate workout plan
+ 
+            
             workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
 
-            # If you're storing selected exercises separately
-            # make sure all_selected_exercises exists before this
+           
             if 'all_selected_exercises' in globals():
                 goal_other = json.dumps(all_selected_exercises)
 
+            workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+
+            
+            history = json.dumps([workout_plan])
+
             cursor.execute("""
                 INSERT INTO UserLogins
-                (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan, history)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 username,
                 email,
@@ -1089,7 +1097,8 @@ def register():
                 goal_other,
                 workouts_per_week,
                 body_part,
-                workout_plan
+                workout_plan,
+                history
             ))
 
             conn.commit()
@@ -1108,8 +1117,20 @@ def register():
 # -------------------------
 @app.route('/home')
 def home():
-    username = session.get('username')
 
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    username = session["username"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT coins FROM UserLogins WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+
+    coins = row["coins"] if row else 0
     weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
@@ -1117,14 +1138,14 @@ def home():
         username=username,
         weekly_workouts=weekly_workouts,
         goal_percent=75,
-        points=120
+        points=coins
     )
 
 
 @app.route('/workoutSession')
-def workoutSession():
 
-    
+#when workoutsession is loaded, grab initialize exercise manager with exercises
+def workoutSession():
     if "username" not in session:
         return redirect(url_for("login"))
     user_id = session["user_id"]
@@ -1136,6 +1157,28 @@ def workoutSession():
     loggedInUsers[user_id].exerciseManager = ExerciseManager(today_exercises)
 
     return render_template("workoutSession.html", exercises=today_exercises)
+
+@app.route('/library', methods=['GET','POST'])
+def library():
+
+    if "username" not in session:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+
+    if request.method=='POST':
+        choice =request.form.get('routines')
+        
+        routines = {
+            "I_Love_Pushups": ["pushups", "running", "pushups","running","pushups","running","pushups"],
+            "Legs_Are_Great": ["squats", "lunges", "glutebridges","running","squats", "lunges", "glutebridges"],
+        }
+        if choice in routines:
+            chosen_routine=routines[choice]
+
+            loggedInUsers[user_id].exerciseManager = ExerciseManager(chosen_routine)
+            return render_template("workoutSession.html", exercises=chosen_routine)
+    return render_template("library.html")
+
 
 @app.route('/workoutcomplete')
 def workoutcomplete():
@@ -1149,17 +1192,142 @@ def workoutcomplete():
 # -------------------------
 # Placeholder
 # -------------------------
-@app.route('/profile')
+@app.route("/profile")
 def profile():
-    return "Profile page coming soon"
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT username, email, goal, workouts_per_week,coins
+        FROM UserLogins
+        WHERE username = ?
+    """, (session["username"],))
+
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template(
+        "profile.html",
+        username=user["username"],
+        email=user["email"],
+        goal=user["goal"],
+        workouts_per_week=user["workouts_per_week"],
+        points=user["coins"],
+        goal_percent=75,
+
+    )
+
+@app.route("/profileEdit", methods=["GET", "POST"])
+def profileEdit():
+
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == "POST":
+
+        new_email = request.form["email"]
+        goal = request.form["goal"]
+        workouts_per_week = int(request.form["workouts_per_week"])
+        body_part = request.form["body_part"]
+
+        workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+
+        if 'all_selected_exercises' in globals():
+            goal_other = json.dumps(all_selected_exercises)
+        else:
+            goal_other = None
+
+        cursor.execute(
+            "SELECT email, history FROM UserLogins WHERE username = ?",
+            (session["username"],)
+        )
+        row = cursor.fetchone()
+
+        old_email = row["email"]
+
+        cursor.execute(
+            "SELECT username FROM UserLogins WHERE email = ? AND username != ?",
+            (new_email, session["username"])
+        )
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            email_to_save = old_email
+        else:
+            email_to_save = new_email
+
+        if row and row["history"]:
+            history = json.loads(row["history"])
+        else:
+            history = []
+
+        history.append(workout_plan)
+        updated_history = json.dumps(history)
+
+        cursor.execute("""
+            UPDATE UserLogins
+            SET email = ?, 
+                goal = ?, 
+                workouts_per_week = ?, 
+                body_part = ?, 
+                workout_plan = ?,
+                history = ?,
+                goal_other = ?
+            WHERE username = ?
+        """, (
+            email_to_save,
+            goal,
+            workouts_per_week,
+            body_part,
+            workout_plan,
+            updated_history,
+            goal_other,
+            session["username"]
+        ))
+
+        conn.commit()
+        conn.close()
+
+        if existing_user:
+            flash("Email already exists. Kept your old email. Profile updated!")
+        else:
+            flash("Profile updated and workout plan added to history!")
+
+        return redirect(url_for("profile"))
+
+    cursor.execute("""
+        SELECT email, goal, goal_other,
+               workouts_per_week, 
+               body_part, workout_plan
+        FROM UserLogins
+        WHERE username = ?
+    """, (session["username"],))
+
+    user = cursor.fetchone()
+    conn.close()
+
+    return render_template(
+        "profileEdit.html",
+        email=user["email"],
+        goal=user["goal"],
+        goal_other=user["goal_other"],
+        workouts_per_week=user["workouts_per_week"],
+        body_part=user["body_part"]
+    )
 
 @app.route('/history')
 def history():
     return render_template("workoutLog.html")
 
-@app.route('/library')
-def library():
-    return "Library page coming soon"
 
 @app.route('/shop')
 def shop():

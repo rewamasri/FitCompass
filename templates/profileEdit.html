@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FitCompass - Edit Profile</title>
+
+<style>
+body{
+  margin:0;
+  font-family:ui-monospace, Menlo, Consolas, monospace;
+  background:#0f2330;
+  color:white;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.card{
+  background:#d8eff4;
+  color:#000;
+  padding:32px;
+  border-radius:14px;
+  width:420px;
+  box-shadow:0 10px 30px rgba(0,0,0,.3);
+}
+
+h2{ text-align:center; }
+
+label{
+  display:block;
+  margin-top:14px;
+  font-weight:bold;
+}
+
+input, select, textarea{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-family:inherit;
+}
+
+textarea{ resize:none; }
+
+button{
+  width:100%;
+  padding:14px;
+  margin-top:22px;
+  border:none;
+  border-radius:10px;
+  background:#a9d99b;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.hidden{ display:none; }
+
+.link{
+  text-align:center;
+  margin-top:12px;
+  display:block;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <img src="{{ url_for('static', filename='logo.png') }}"
+       style="display:block; margin:0 auto 20px auto; max-width:120px;" />
+
+  <h2>Edit Profile</h2>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <p style="color:green; text-align:center;">
+        {{ messages[0] }}
+      </p>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST">
+
+  
+    <label>Email</label>
+    <input name="email"
+           type="email"
+           value="{{ email }}"
+           required>
+
+   
+    <label>Your Goal</label>
+    <select name="goal"
+            id="goal"
+            onchange="toggleOther()"
+            required>
+
+      <option value="get fit"
+        {% if goal == "get fit" %}selected{% endif %}>
+        Get fit
+      </option>
+
+      <option value="lose weight"
+        {% if goal == "lose weight" %}selected{% endif %}>
+        Lose weight
+      </option>
+
+      <option value="gain strength"
+        {% if goal == "gain strength" %}selected{% endif %}>
+        Gain strength
+      </option>
+
+      <option value="trying something new"
+        {% if goal == "trying something new" %}selected{% endif %}>
+        Trying something new
+      </option>
+
+      <option value="other"
+        {% if goal == "other" %}selected{% endif %}>
+        Other
+      </option>
+    </select>
+
+    
+    <div id="otherGoal"
+         class="{% if goal != 'other' %}hidden{% endif %}">
+      <label>Enter Custom Goal</label>
+      <textarea name="goal_other"
+                rows="3">{{ goal_other }}</textarea>
+    </div>
+
+   
+    <label>Workouts Per Week</label>
+    <select name="workouts_per_week" required>
+      {% for i in range(1,8) %}
+        <option value="{{ i }}"
+          {% if workouts_per_week == i %}selected{% endif %}>
+          {{ i }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <label>Is there a body part you want to focus on?</label>
+    <select name="body_part" required>
+
+      <option value="">Select one</option>
+
+      <option value="legs"
+        {% if body_part == "legs" %}selected{% endif %}>
+        legs
+      </option>
+
+      <option value="arms"
+        {% if body_part == "arms" %}selected{% endif %}>
+        arms
+      </option>
+
+      <option value="chest"
+        {% if body_part == "chest" %}selected{% endif %}>
+        chest
+      </option>
+
+      <option value="abdomen"
+        {% if body_part == "abdomen" %}selected{% endif %}>
+        abdomen
+      </option>
+
+      <option value="glute"
+        {% if body_part == "glute" %}selected{% endif %}>
+        glute
+      </option>
+
+      <option value="wrists"
+        {% if body_part == "wrists" %}selected{% endif %}>
+        wrists
+      </option>
+
+      <option value="shoulder"
+        {% if body_part == "shoulder" %}selected{% endif %}>
+        shoulder
+      </option>
+
+      <option value="back"
+        {% if body_part == "back" %}selected{% endif %}>
+        back
+      </option>
+
+      <option value="neck"
+        {% if body_part == "neck" %}selected{% endif %}>
+        neck
+      </option>
+
+      <option value="other"
+        {% if body_part == "other" %}selected{% endif %}>
+        other
+      </option>
+
+    </select>
+
+    <button type="submit">
+      Save Changes
+    </button>
+
+  </form>
+
+  <a class="link"
+     href="{{ url_for('profile') }}">
+     Back to Profile
+  </a>
+
+</div>
+
+<script>
+function toggleOther(){
+  const goal = document.getElementById("goal").value;
+  document.getElementById("otherGoal")
+    .classList.toggle("hidden", goal !== "other");
+}
+</script>
+
+</body>
+</html>
