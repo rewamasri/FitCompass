@@ -1162,7 +1162,7 @@ def library():
         choice =request.form.get('routines')
         
         routines = {
-            "I_Love_Pushups": ["pushups", "running"],
+            "I_Love_Pushups": ["pushups", "running", "pushups","running","pushups","running","pushups"],
             "Legs_Are_Great": ["squats", "lunges", "glutebridges","running","squats", "lunges", "glutebridges"],
             "cardio_cardio_cardio":["running","jumpingjacks","lunges","running","jumpingjacks","lunges"]
         }
