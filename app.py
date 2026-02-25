@@ -1233,6 +1233,11 @@ def profileEdit():
 
         workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
 
+        if 'all_selected_exercises' in globals():
+            goal_other = json.dumps(all_selected_exercises)
+        else:
+            goal_other = None
+
         cursor.execute(
             "SELECT email, history FROM UserLogins WHERE username = ?",
             (session["username"],)
@@ -1267,7 +1272,8 @@ def profileEdit():
                 workouts_per_week = ?, 
                 body_part = ?, 
                 workout_plan = ?,
-                history = ?
+                history = ?,
+                goal_other = ?
             WHERE username = ?
         """, (
             email_to_save,
@@ -1276,6 +1282,7 @@ def profileEdit():
             body_part,
             workout_plan,
             updated_history,
+            goal_other,
             session["username"]
         ))
 
@@ -1283,9 +1290,9 @@ def profileEdit():
         conn.close()
 
         if existing_user:
-            flash("email already exists. Kept your old email. Profile updated!")
+            flash("Email already exists. Kept your old email. Profile updated!")
         else:
-            flash("profile updated and workout plan added to history!")
+            flash("Profile updated and workout plan added to history!")
 
         return redirect(url_for("profile"))
 
