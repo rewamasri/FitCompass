@@ -45,6 +45,7 @@ cursor = connection.cursor()
 cursor.execute("DROP TABLE IF EXISTS UserLogins")
 cursor.execute("DROP TABLE IF EXISTS UserOutfits")
 
+# first table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS UserLogins(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS UserLogins(
 )
 """)
 
+#second table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS UserOutfits(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1340,17 +1342,22 @@ def shop():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
+    uid = session["user_id"]
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT coins, equipped_outfit FROM UserLogins WHERE id=?", (session["user_id"],))
+    #get user data (Coins & Equipped)
+    cursor.execute("SELECT coins, equipped_outfit FROM UserLogins WHERE id=?", (uid,))
     user = cursor.fetchone()
 
-    cursor.execute("""
-        SELECT outfit_name FROM UserOutfits
-        WHERE user_id=?
-    """, (session["user_id"],))
+    #make sure login
+    if user is None:
+        conn.close()
+        session.clear()
+        return redirect(url_for("login"))
 
+    #get outfits
+    cursor.execute("SELECT outfit_name FROM UserOutfits WHERE user_id=?", (uid,))
     owned = [row["outfit_name"] for row in cursor.fetchall()]
 
     conn.close()
@@ -1359,9 +1366,8 @@ def shop():
         "shop.html",
         coins=user["coins"],
         owned=owned,
-        equipped=user["equipped_outfit"]
+        equipped=user["equipped_outfit"] if user["equipped_outfit"] else ""
     )
-
 
 @app.route('/buy_costume', methods=["POST"])
 def buy_costume():
@@ -1371,47 +1377,39 @@ def buy_costume():
     data = request.get_json()
     outfit = data["costume"]
     cost = data["cost"]
+    uid = session["user_id"]
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Get user coins
-    cursor.execute("SELECT coins FROM UserLogins WHERE id=?", (session["user_id"],))
+    #get coins
+    cursor.execute("SELECT coins FROM UserLogins WHERE id=?", (uid,))
     user = cursor.fetchone()
 
-    if user["coins"] < cost:
+    if not user or user["coins"] < cost:
         conn.close()
         return jsonify(status="not_enough")
 
-    # Check if already owned
-    cursor.execute("""
-        SELECT * FROM UserOutfits
-        WHERE user_id=? AND outfit_name=?
-    """, (session["user_id"], outfit))
-
+    #check owned outfts
+    cursor.execute("SELECT * FROM UserOutfits WHERE user_id=? AND outfit_name=?", (uid, outfit))
     if cursor.fetchone():
         conn.close()
         return jsonify(status="already_owned")
 
-    # Deduct coins
-    new_coins = user["coins"] - cost
+    #buy and save new outfits
+    try:
+        new_coins = user["coins"] - cost
+        cursor.execute("UPDATE UserLogins SET coins=? WHERE id=?", (new_coins, uid))
+        cursor.execute("INSERT INTO UserOutfits (user_id, outfit_name) VALUES (?, ?)", (uid, outfit))
+        conn.commit()
+        status = "success"
+    except sqlite3.Error:
+        conn.rollback()
+        status = "error"
+    finally:
+        conn.close()
 
-    cursor.execute("""
-        UPDATE UserLogins
-        SET coins=?
-        WHERE id=?
-    """, (new_coins, session["user_id"]))
-
-    # Insert outfit ownership
-    cursor.execute("""
-        INSERT INTO UserOutfits (user_id, outfit_name)
-        VALUES (?, ?)
-    """, (session["user_id"], outfit))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify(status="success", new_coins=new_coins)
+    return jsonify(status=status, new_coins=new_coins)
 
 @app.route('/wear_costume', methods=["POST"])
 def wear_costume():
@@ -1420,26 +1418,19 @@ def wear_costume():
 
     data = request.get_json()
     outfit = data["costume"]
+    uid = session["user_id"]
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Ensure user owns it
-    cursor.execute("""
-        SELECT * FROM UserOutfits
-        WHERE user_id=? AND outfit_name=?
-    """, (session["user_id"], outfit))
-
+    #check they own it
+    cursor.execute("SELECT * FROM UserOutfits WHERE user_id=? AND outfit_name=?", (uid, outfit))
     if not cursor.fetchone():
         conn.close()
         return jsonify(status="not_owned")
 
-    cursor.execute("""
-        UPDATE UserLogins
-        SET equipped_outfit=?
-        WHERE id=?
-    """, (outfit, session["user_id"]))
-
+    #change UserLogin main outfit
+    cursor.execute("UPDATE UserLogins SET equipped_outfit=? WHERE id=?", (outfit, uid))
     conn.commit()
     conn.close()
 
