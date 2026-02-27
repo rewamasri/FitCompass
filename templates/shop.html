@@ -185,9 +185,8 @@
                 <div class="items">
                     {# List of all costumes to loop through #}
                     {% set catalog = [
-                        ('fireman', 200), ('clown', 300), ('cowboy', 250), 
-                        ('fairy', 250), ('police', 250), ('priest', 250), 
-                        ('surfer', 250), ('bikini', 1000)
+                        ('tracksuit', 250), ('jazzercise', 250), 
+                        ('surfer', 250), ('bikini', 6666666)
                     ] %}
 
                     {% for name, price in catalog %}
@@ -215,39 +214,40 @@
             </div>
 
             <div class="avatar">
-      <div class="avatar-box">
-        <div class="michalis-layers">
-          <!-- base needs to be drawn first -->
-          <div class="base-body"> 
-            <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="template">  
-          </div>
+            <div class="avatar-box">
+            <div class="michalis-layers">
+                <div class="base-body"> 
+                    <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="template">  
+                </div>
 
-          <div class="base-arms">
-            <img src="{{ url_for('static', filename='michalis/arms-low-longsleeve.png') }}" alt="low arms pose">  
-          </div>
- 
-          <div class="expression">
-            <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="slight smile">   
-          </div> 
+                <div class="base-arms">
+                    <img src="{{ url_for('static', filename='michalis/low arms.png') }}" alt="low arms pose1">  
+                </div>
 
-          <div class="sleeves">
-            <img src="{{ url_for('static', filename='michalis/arms-low-buttonup.png') }}" alt="low arms pose">  
-          </div>
+                <div class="expression">
+                    <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="slight smile">   
+                </div> 
 
-          <div class="torso">
-            <img src="{{ url_for('static', filename='michalis/torso-buttonup.png') }}" alt="low arms pose">  
-          </div>
-          
-        </div>
-        </div>
-        </div>
+                <div class="sleeves">
+                    <img id="layer-sleeves" 
+                        src="{{ url_for('static', filename='outfits/low arms/' + (equipped if equipped else 'business') + ' low arms.png') }}" 
+                        alt="sleeves">  
+                </div>
+
+                <div class="torso">
+                    <img id="layer-torso" 
+                        src="{{ url_for('static', filename='outfits/torso/' + (equipped if equipped else 'business') + ' torso.png') }}" 
+                        alt="torso">  
+                </div>
+            </div>
+            </div>
+            </div>
         </div>
         </div>
     </main>
 </div>
 
 <script>
-    // These variables keep track of state while the user is on the page
     let userCoins = {{ coins }};
 
     async function buyCostume(name, price, button) {
@@ -265,11 +265,8 @@
             const result = await response.json();
 
             if (result.status === "success") {
-                // Update coins in UI
                 userCoins = result.new_coins;
                 document.getElementById("coinDisplay").innerText = userCoins;
-                
-                // Update buttons
                 button.disabled = true;
                 button.innerText = "Purchased";
                 wearBtn.disabled = false;
@@ -295,14 +292,14 @@
 
             const result = await response.json();
 
-            if (result.status === "success") {
-                // Update the avatar image instantly
-                document.getElementById("costume-layer").src = `/static/costumes/${name}.png`;
-            }
-        } catch (error) {
-            console.error("Error wearing costume:", error);
+        if (result.status === "success") {
+            document.getElementById("layer-torso").src = `/static/outfits/torso/${name} torso.png`;
+            document.getElementById("layer-sleeves").src = `/static/outfits/low arms/${name} low arms.png`;
         }
+    } catch (error) {
+        console.error("Error wearing costume:", error);
     }
+}
 </script>
 
 </body>
