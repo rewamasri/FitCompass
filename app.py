@@ -42,8 +42,8 @@ connection = get_db_connection()
 cursor = connection.cursor()
 
 # Drop old table if it exists (WARNING: deletes old user data!) Only do when adding columns to the table and want total reset
-cursor.execute("DROP TABLE IF EXISTS UserLogins")
-cursor.execute("DROP TABLE IF EXISTS UserOutfits")
+# cursor.execute("DROP TABLE IF EXISTS UserLogins")
+# cursor.execute("DROP TABLE IF EXISTS UserOutfits")
 
 # first table
 cursor.execute("""
@@ -865,9 +865,9 @@ new_people_exercises = [
 rep_ranges = {
     "Beginner": {
         "core": "5",
-        "lower_body": "5", 
+        "lower_body": "6", 
         "upper_body": "3", 
-        "cardio":"45"
+        "cardio":"7"
     }
 }
 
@@ -1159,7 +1159,14 @@ def workoutSession():
 
     loggedInUsers[user_id].exerciseManager = ExerciseManager(names)
 
-    return render_template("workoutSession.html", exercises=today_exercises)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT equipped_outfit FROM UserLogins WHERE id=?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+
+    return render_template("workoutSession.html", exercises=today_exercises,
+            equipped=user["equipped_outfit"] if user["equipped_outfit"] else "")
 
 @app.route('/library', methods=['GET','POST'])
 def library():
