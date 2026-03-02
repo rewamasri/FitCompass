@@ -610,113 +610,54 @@ MAX_ELBOW_UP   = 165
 class PushUpState:
     IDLE = "IDLE"
     DOWN = "DOWN"
-    UP   = "UP"
+
 class PushUpController:
     def __init__(self):
         self.state = PushUpState.IDLE
         self.count = 0
-        self.elbow_angle = 0
-        self.body_angle = 0
-        self.side = None  # "left" or "right"
-
     def update(self, detection_result, image_shape):
         if not detection_result or not detection_result.pose_landmarks:
             return
-
-        landmarks = detection_result.pose_landmarks[0]
+        landmarks = detection_result.pose_landmarks[0] 
         pixel_landmarks = landmarks_to_pixels(landmarks, image_shape)
 
-        # ---- Choose best side ----
-        if self.side is None:
-            self.side = "left" if landmarks[LEFT_ELBOW].visibility > landmarks[RIGHT_ELBOW].visibility else "right"
+        shoulder = pixel_landmarks[RIGHT_SHOULDER]
+        elbow = pixel_landmarks[RIGHT_ELBOW]
+        wrist = pixel_landmarks[RIGHT_WRIST]
+        hip = pixel_landmarks[RIGHT_HIP]
+        knee = pixel_landmarks[RIGHT_KNEE]
 
-        if self.side == "left":
-            shoulder = pixel_landmarks[LEFT_SHOULDER]
-            elbow    = pixel_landmarks[LEFT_ELBOW]
-            wrist    = pixel_landmarks[LEFT_WRIST]
-            hip      = pixel_landmarks[LEFT_HIP]
-            ankle    = pixel_landmarks[LEFT_ANKLE]
-        else:
-            shoulder = pixel_landmarks[RIGHT_SHOULDER]
-            elbow    = pixel_landmarks[RIGHT_ELBOW]
-            wrist    = pixel_landmarks[RIGHT_WRIST]
-            hip      = pixel_landmarks[RIGHT_HIP]
-            ankle    = pixel_landmarks[RIGHT_ANKLE]
-
-        # ---- Angles ----
         self.elbow_angle = angleBetweenLines(shoulder, elbow, wrist)
-        self.body_angle  = angleBetweenLines(shoulder, hip, ankle)
+        self.body_alignment = angleBetweenLines(shoulder, hip, knee)
 
-        # ---- FORM CHECKS (TOLERANT) ----
-        body_angle_ok = self.body_angle >= (IDEAL_BODY_ANGLE - BODY_ANGLE_TOLERANCE)
-        body_slope_ok = abs(shoulder[1] - hip[1]) <= BODY_SLOPE_TOLERANCE
-
-        good_form = body_angle_ok and body_slope_ok
-
-
-        # ---- STATE MACHINE ----
         if self.state == PushUpState.IDLE:
-            if self.elbow_angle < 140 and good_form:
+            if self.elbow_angle < 85 and self.body_alignment > 150:
                 self.state = PushUpState.DOWN
-
         elif self.state == PushUpState.DOWN:
-            if self.elbow_angle < 90 and good_form:
-                self.state = PushUpState.UP
-
-        elif self.state == PushUpState.UP:
-            if self.elbow_angle > 165 and good_form:
+            if self.elbow_angle > 160:
                 self.count += 1
                 self.state = PushUpState.IDLE
-                print(f"Push-ups: {self.count}")
-
     def draw(self, image, detection_result):
         annotated_image = image.copy()
         if not detection_result.pose_landmarks:
             return annotated_image
-
         h, w, _ = image.shape
 
         for pose_landmarks in detection_result.pose_landmarks:
             def to_pixel(lm):
                 return int(lm.x * w), int(lm.y * h)
+            
+            shoulder = to_pixel(pose_landmarks[RIGHT_SHOULDER])
+            elbow = to_pixel(pose_landmarks[RIGHT_ELBOW])
+            wrist = to_pixel(pose_landmarks[RIGHT_WRIST])
+            hip = to_pixel(pose_landmarks[RIGHT_HIP])
 
-            if self.side == "left":
-                shoulder = to_pixel(pose_landmarks[LEFT_SHOULDER])
-                elbow    = to_pixel(pose_landmarks[LEFT_ELBOW])
-                wrist    = to_pixel(pose_landmarks[LEFT_WRIST])
-                hip      = to_pixel(pose_landmarks[LEFT_HIP])
-                ankle    = to_pixel(pose_landmarks[LEFT_ANKLE])
-            else:
-                shoulder = to_pixel(pose_landmarks[RIGHT_SHOULDER])
-                elbow    = to_pixel(pose_landmarks[RIGHT_ELBOW])
-                wrist    = to_pixel(pose_landmarks[RIGHT_WRIST])
-                hip      = to_pixel(pose_landmarks[RIGHT_HIP])
-                ankle    = to_pixel(pose_landmarks[RIGHT_ANKLE])
+            color = (0, 255, 0) if self.state == PushUpState.DOWN else (0, 0, 255)
+            
 
-            body_parallel = abs(shoulder[1] - hip[1]) < 25
-            body_straight = self.body_angle > 165
-
-            color = (0, 255, 0) if body_parallel and body_straight else (0, 0, 255)
-
-            # Arm
-            cv2.line(annotated_image, shoulder, elbow, color, 2)
-            cv2.line(annotated_image, elbow, wrist, color, 2)
-
-            # Body
-            cv2.line(annotated_image, shoulder, hip, color, 2)
-            cv2.line(annotated_image, hip, ankle, color, 2)
-
-            # Debug
-            cv2.putText(
-                annotated_image,
-                f"Elbow: {int(self.elbow_angle)}  Body: {int(self.body_angle)}",
-                (30, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                color,
-                2
-            )
-
+            cv2.line(annotated_image, shoulder, elbow, color, 4)
+            cv2.line(annotated_image, elbow, wrist, color, 4)
+            cv2.line(annotated_image, shoulder, hip, (255, 255, 0), 2)
         return annotated_image
 
 sitUpController = SitUpController()
@@ -1170,28 +1111,51 @@ def workoutSession():
 
 @app.route('/library', methods=['GET','POST'])
 def library():
-
-    if "username" not in session:
+    if "username" not in session or session.get("user_id") not in loggedInUsers:
+        session.clear()
         return redirect(url_for("login"))
+        
     user_id = session["user_id"]
-
-    if request.method=='POST':
-        choice =request.form.get('routines')
+    if request.method == 'POST':
+        choice = request.form.get('routines')
         
         routines = {
-            "I_Love_Pushups": ["pushups", "running", "pushups","running","pushups","running","pushups"],
-            "Legs_Are_Great": ["squats", "lunges", "glutebridges","running","squats", "lunges", "glutebridges"],
-            "cardio_cardio_cardio":["running","jumpingjacks","lunges","running","jumpingjacks","lunges"]
+            "I_Love_Pushups": [
+                {"name": "pushups", "reps": "3"},
+                {"name": "running", "reps": "45"},
+                {"name": "pushups", "reps": "3"},
+                {"name": "running", "reps": "45"},
+                {"name": "pushups", "reps": "3"},
+                {"name": "running", "reps": "45"},
+                {"name": "pushups", "reps": "3"}
+            ],
+            "Legs_Are_Great": [
+                {"name": "squats", "reps": "3"},
+                {"name": "lunges", "reps": "3"},
+                {"name": "glutebridges", "reps": "3"},
+                {"name": "running", "reps": "45"},
+                {"name": "squats", "reps": "3"},
+                {"name": "lunges", "reps": "3"},
+                {"name": "glutebridges", "reps": "3"}
+            ],
+            "cardio_cardio_cardio": [
+                {"name": "running", "reps": "45"},
+                {"name": "jumpingjacks", "reps": "45"},
+                {"name": "lunges", "reps": "3"},
+                {"name": "running", "reps": "45"},
+                {"name": "jumpingjacks", "reps": "45"},
+                {"name": "lunges", "reps": "3"}
+            ]
         }
+        
         if choice in routines:
             chosen_routine = routines[choice]
-            loggedInUsers[user_id].exerciseManager = ExerciseManager(chosen_routine)
-            # Convert to dict format with default reps
-            exercises = [
-                {"name": ex, "reps": "45" if ex in ["running", "jumpingjacks"] else "10"}
-                for ex in chosen_routine
-            ]
-            return render_template("workoutSession.html", exercises=exercises)
+        
+            names_only = [ex["name"] for ex in chosen_routine]
+            loggedInUsers[user_id].exerciseManager = ExerciseManager(names_only) 
+            
+            return render_template("workoutSession.html", exercises=chosen_routine) 
+            
     return render_template("library.html")
 
 
