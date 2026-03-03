@@ -1068,11 +1068,12 @@ def home():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT coins FROM UserLogins WHERE username = ?", (username,))
+    cursor.execute("SELECT coins, equipped_outfit FROM UserLogins WHERE username = ?", (username,))
     row = cursor.fetchone()
     conn.close()
 
     coins = row["coins"] if row else 0
+    equipped = row["equipped_outfit"] if row and row["equipped_outfit"] else "business"
     weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
@@ -1080,7 +1081,8 @@ def home():
         username=username,
         weekly_workouts=weekly_workouts,
         goal_percent=75,
-        points=coins
+        points=coins,
+        equipped=equipped
     )
 
 
