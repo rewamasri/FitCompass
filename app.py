@@ -1088,7 +1088,7 @@ def home():
 
 #when workoutsession is loaded, grab initialize exercise manager with exercises
 def workoutSession():
-    if "username" not in session:
+    if "username" not in session or session.get("user_id") not in loggedInUsers:
         return redirect(url_for("login"))
     user_id = session["user_id"]
 
