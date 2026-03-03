@@ -235,8 +235,8 @@
       position: absolute;
       bottom: 0;
       right: 0;
-      width: 250px;  
-      height: 350px; 
+      width: 150px;  
+      height: 210px; 
     }
     .michalis-layers img {
       width: 100%;
@@ -463,11 +463,18 @@ const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
     .map(ex => {
         const normalizedName = ex.name.toLowerCase().replace(/[\s-]/g, "");
 
-        if (["jumpingjacks", "running"].includes(normalizedName)) {
-            return { name: ex.name, type: "timer", duration: parseInt(ex.reps) || 30 };
+        let parsedNumber = parseInt(ex.reps);
+        
+        if (isNaN(parsedNumber)) {
+            const match = ex.name.match(/\d+/);
+            parsedNumber = match ? parseInt(match[0]) : 10;
         }
 
-        return { name: ex.name, type: "reps", target: parseInt(ex.reps) || 10 };
+        if (normalizedName.includes("jumpingjacks") || normalizedName.includes("run") || normalizedName.includes("jog")) {
+            return { name: ex.name, type: "timer", duration: parsedNumber };
+        }
+
+        return { name: ex.name, type: "reps", target: parsedNumber };
     });
 
 

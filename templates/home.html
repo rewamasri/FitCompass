@@ -209,6 +209,29 @@
       cursor:pointer;
       display: block; 
     }
+    .avatar-home {
+      width: 150px;
+      height: 200px;
+      position: fixed; 
+      bottom: 20px;
+      right: 20px;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .michalis-layers {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .michalis-layers img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
   </style>
 </head>
 
@@ -294,6 +317,25 @@
 
 
     </section>
+    <div class="avatar-home">
+        <div class="michalis-layers">
+            <div class="base-body"> 
+                <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="template">  
+            </div>
+            <div class="base-arms">
+                <img src="{{ url_for('static', filename='michalis/low arms.png') }}" alt="low arms">  
+            </div>
+            <div class="expression">
+                <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="smile">   
+            </div> 
+            <div class="sleeves">
+                <img src="{{ url_for('static', filename='outfits/low arms/' + (equipped if equipped else 'business') + ' low arms.png') }}" alt="sleeves">  
+            </div>
+            <div class="torso">
+                <img src="{{ url_for('static', filename='outfits/torso/' + (equipped if equipped else 'business') + ' torso.png') }}" alt="torso">  
+            </div>
+        </div>
+    </div>
   </main>
 </div>
 
