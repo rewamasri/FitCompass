@@ -1,335 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fit Compass - Workout Log</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fit Compass - Workout Log</title>
 
-  <style>
-    :root{
-      --bg-main: #1f4d69;
-      --bg-sidebar: #d8eff4;
-      --panel-top: #d8eff4;
+<style>
+:root{
+  --bg-main: #1f4d69;
+  --bg-sidebar: #d8eff4;
+  --panel-top: #d8eff4;
+  --log-row: rgba(0,0,0,.18);
+  --log-accent: #e11d48;
+  --text-dark: #0f1a1f;
+  --text-light: rgba(255,255,255,.92);
+  --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 
-      --log-row: rgba(0,0,0,.18);
-      --log-accent: #e11d48; /* red accent bar */
-      --divider: rgba(255,255,255,.22);
+*{ box-sizing: border-box; }
 
-      --text-dark: #0f1a1f;
-      --text-light: rgba(255,255,255,.92);
+body{
+  margin:0;
+  font-family: var(--font);
+  background:#0f2330;
+  color:white;
+}
 
-      --shadow: 0 10px 30px rgba(0,0,0,.18);
-      --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    }
+.app{ display:flex; min-height:100vh; }
 
-    *{ box-sizing: border-box; }
-    body{
-      margin: 0;
-      font-family: var(--font);
-      background: #0f2330;
-      color: white;
-      min-height: 100vh;
-    }
+.main{
+  flex:1;
+  background: var(--bg-main);
+}
 
-    .app{
-      display: flex;
-      min-height: 100vh;
-      position: relative;
-    }
+.top-strip{
+  height:90px;
+  background:var(--panel-top);
+  color:var(--text-dark);
+  display:flex;
+  align-items:center;
+  padding:0 22px;
+  gap:14px;
+}
 
-    /* ---------------- MAIN ---------------- */
-    .main{
-      flex: 1;
-      background: var(--bg-main);
-      padding: 0;
-      overflow: hidden;
-      min-width: 0;
-    }
+.sidebar-toggle{
+  border:none;
+  background:white;
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:22px;
+}
 
-    .top-strip{
-      height: 90px;
-      background: var(--panel-top);
-      color: var(--text-dark);
-      display: flex;
-      align-items: center;
-      padding: 0 22px;
-      border-bottom: 3px solid rgba(0,0,0,.12);
-      gap: 14px;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-    }
+.top-strip h1{
+  margin:0;
+  flex:1;
+}
 
-    .sidebar-toggle{
-      border: none;
-      background: white;
-      color: var(--text-dark);
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
-      box-shadow: 0 6px 16px rgba(0,0,0,.14);
-      font-size: 22px;
-      flex: 0 0 auto;
-    }
+.points-pill{
+  background:#9fe19a;
+  border:none;
+  border-radius:10px;
+  padding:10px 14px;
+  font-family:var(--font);
+  font-size:14px;
+  color:#0f1a1f;
+}
 
-    .top-strip h1{
-      margin: 0;
-      font-size: 30px;
-      font-weight: 500;
-      letter-spacing: .5px;
-      flex: 1;
-    }
+.content{ padding:28px; }
 
-    .points-pill{
-      background: #9fe19a;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-family: var(--font);
-      font-size: 14px;
-      color: #0f1a1f;
-      box-shadow: 0 6px 16px rgba(0,0,0,.12);
-      cursor: default;
-    }
+.log-list{
+  width:min(650px,95%);
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
 
-    .content{
-      padding: 28px 26px;
-    }
+.log-item{
+  background:var(--log-row);
+  border:2px solid rgba(0,0,0,.18);
+  box-shadow:0 10px 18px rgba(0,0,0,.16);
+  overflow:hidden;
+  transition:all .2s ease;
+}
 
-    /* ---------------- WORKOUT LOG LIST ---------------- */
-    .log-list{
-      width: min(560px, 92%);
-      margin: 22px auto 0;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+.log-header{
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+}
 
-    .log-item{
-      display: flex;
-      align-items: center;
-      height: 56px;
-      background: var(--log-row);
-      border: 2px solid rgba(0,0,0,.18);
-      box-shadow: 0 10px 18px rgba(0,0,0,.16);
-      overflow: hidden;
-    }
+.log-accent{
+  width:10px;
+  height:56px;
+  background:var(--log-accent);
+}
 
-    .log-accent{
-      width: 10px;
-      height: 100%;
-      background: var(--log-accent);
-      flex: 0 0 auto;
-    }
+.log-text{
+  padding:0 16px;
+  height:56px;
+  display:flex;
+  align-items:center;
+  color:var(--text-light);
+  font-size:14px;
+  flex:1;
+}
 
-    .log-text{
-      padding: 0 16px;
-      color: var(--text-light);
-      font-size: 14px;
-      letter-spacing: .2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+.log-body{
+  display:none;
+  padding:16px;
+  border-top:1px solid rgba(255,255,255,.15);
+  background:rgba(0,0,0,.15);
+  white-space:pre-wrap;
+  font-size:13px;
+  line-height:1.5;
+}
 
-    /* Optional: make each row clickable later */
-    .log-item.clickable{
-      cursor: pointer;
-      transition: transform .06s ease, filter .12s ease;
-    }
-    .log-item.clickable:hover{ filter: brightness(1.05); }
-    .log-item.clickable:active{ transform: translateY(1px); }
+.log-item.active .log-body{
+  display:block;
+}
 
-    /* ---------------- OVERLAY SIDEBAR (hidden until clicked) ---------------- */
-    .overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.45);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .18s ease;
-      z-index: 20;
-    }
-    .overlay.open{
-      opacity: 1;
-      pointer-events: auto;
-    }
+/* Sidebar */
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s;
+}
+.overlay.open{
+  opacity:1;
+  pointer-events:auto;
+}
 
-    .sidebar{
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100vh;
-      width: 280px;
-      background: var(--bg-sidebar);
-      color: var(--text-dark);
-      padding: 24px 14px;
-      border-right: 3px solid rgba(0,0,0,.08);
-      box-shadow: 14px 0 40px rgba(0,0,0,.22);
-      transform: translateX(-110%);
-      transition: transform .22s ease;
-      z-index: 25;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .sidebar.open{
-      transform: translateX(0);
-    }
+.sidebar{
+  position:fixed;
+  top:0;
+  left:0;
+  height:100vh;
+  width:280px;
+  background:var(--bg-sidebar);
+  color:var(--text-dark);
+  padding:24px 14px;
+  transform:translateX(-110%);
+  transition:transform .22s ease;
+  display:flex;
+  flex-direction:column;
+}
+.sidebar.open{
+  transform:translateX(0);
+}
 
-    .nav{
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 0 6px;
-      flex: 1;
-    }
+.nav{ flex:1; display:flex; flex-direction:column; gap:10px; }
 
-    .nav button{
-      width: 100%;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 14px;
-      background: white;
-      color: var(--text-dark);
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 16px;
-      text-align: left;
-      box-shadow: 0 4px 10px rgba(0,0,0,.08);
-      transition: transform .06s ease, filter .12s ease;
-    }
-    .nav button:hover{ filter: brightness(.98); }
-    .nav button:active{ transform: translateY(1px); }
+.nav button,
+.logout button{
+  border:none;
+  border-radius:10px;
+  padding:12px 14px;
+  background:white;
+  cursor:pointer;
+  font-family:var(--font);
+}
 
-    .logout{
-      margin-top: auto;
-      padding: 0 6px 8px;
-    }
+.logout{
+  margin-top:auto;
+}
 
-    .logout button{
-      width: 100%;
-      border: none;
-      border-radius: 10px;
-      padding: 14px 14px;
-      background: #d83a4a;
-      color: #1a0b0d;
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 18px;
-      box-shadow: 0 8px 18px rgba(0,0,0,.18);
-    }
-
-    /* Responsive */
-    @media(max-width: 680px){
-      .top-strip{ height: auto; padding: 18px 18px; }
-      .top-strip h1{ font-size: 26px; }
-      .content{ padding: 18px; }
-      .sidebar{ width: 85vw; max-width: 320px; }
-      .log-list{ width: 100%; }
-    }
-  </style>
+.logout button{
+  background:#d83a4a;
+}
+</style>
 </head>
 
 <body>
-  <div class="app">
+<div class="app">
 
-    <!-- Dim background overlay when sidebar is open -->
-    <div class="overlay" id="overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
-    <!-- Sidebar (hidden until hamburger clicked) -->
-    <aside class="sidebar" id="sidebar" aria-label="Sidebar navigation">
-      <nav class="nav">
-        <button type="button" onclick="navigateTo('{{ url_for('home') }}')">home</button>
-        <button type="button" onclick="navigateTo('{{ url_for('settings') }}')">settings</button>
-        <button type="button" onclick="navigateTo('{{ url_for('profile') }}')">profile</button>
-        <button type="button" onclick="navigateTo('{{ url_for('history') }}')">history</button>
-        <button type="button" onclick="navigateTo('{{ url_for('shop') }}')">shop</button>
-        <button type="button" onclick="navigateTo('{{ url_for('allworkouts') }}')">library</button>
-        <button type="button" onclick="navigateTo('{{ url_for('more') }}')">more</button>
-      </nav>
+<aside class="sidebar" id="sidebar">
+  <nav class="nav">
+    <button onclick="navigateTo('{{ url_for('home') }}')">home</button>
+    <button onclick="navigateTo('{{ url_for('settings') }}')">settings</button>
+    <button onclick="navigateTo('{{ url_for('profile') }}')">profile</button>
+    <button onclick="navigateTo('{{ url_for('workoutLog') }}')">history</button>
+    <button onclick="navigateTo('{{ url_for('shop') }}')">shop</button>
+  </nav>
+  <div class="logout">
+    <button onclick="navigateTo('{{ url_for('logout') }}')">logout</button>
+  </div>
+</aside>
 
-      <div class="logout">
-        <button type="button" onclick="navigateTo('{{ url_for('logout') }}')">logout</button>
-      </div>
-    </aside>
+<main class="main">
+<header class="top-strip">
+  <button class="sidebar-toggle" onclick="openSidebar()">☰</button>
+  <h1>Workout log</h1>
+  <button class="points-pill" disabled>
+    Points: {{ points }}
+  </button>
+</header>
 
-    <!-- Main content -->
-    <main class="main">
-      <header class="top-strip">
-        <button class="sidebar-toggle" type="button" onclick="openSidebar()" aria-label="Open sidebar">☰</button>
-        <h1>Workout log</h1>
+<div class="content">
+<div class="log-list">
 
-        <!-- Placeholder points (wire later with Jinja variable if you want) -->
-        <button class="points-pill" type="button" disabled>
-          points
-          <!-- Example later: points: {{ points }} -->
-        </button>
-      </header>
+{% if history %}
+  {% for workout in history[::-1] %}
+    {% set first_line = workout.split('\n')[0] %}
 
-      <div class="content">
-        <div class="log-list" aria-label="Workout log entries">
-          <div class="log-item">
-            <div class="log-accent"></div>
-            <div class="log-text">[Name of workout] - [Date Completed]</div>
-          </div>
-
-          <div class="log-item">
-            <div class="log-accent"></div>
-            <div class="log-text">[Name of workout] - [Date Completed]</div>
-          </div>
-
-          <div class="log-item">
-            <div class="log-accent"></div>
-            <div class="log-text">[Name of workout] - [Date Completed]</div>
-          </div>
-
-          <div class="log-item">
-            <div class="log-accent"></div>
-            <div class="log-text">[Name of workout] - [Date Completed]</div>
-          </div>
-
-          <div class="log-item">
-            <div class="log-accent"></div>
-            <div class="log-text">[Name of workout] - [Date Completed]</div>
-          </div>
-
-          <!-- Later you can loop in Flask:
-          {% for w in workouts %}
-            <div class="log-item clickable" onclick="location.href='/workout/{{ w.id }}'">
-              <div class="log-accent"></div>
-              <div class="log-text">{{ w.name }} - {{ w.completed_date }}</div>
-            </div>
-          {% endfor %}
-          -->
+    <div class="log-item">
+      <div class="log-header" onclick="toggleWorkout(this)">
+        <div class="log-accent"></div>
+        <div class="log-text">
+          {{ first_line }} - Plan {{ loop.index }}
         </div>
       </div>
-    </main>
+
+      <div class="log-body">
+        {{ workout }}
+      </div>
+    </div>
+
+  {% endfor %}
+{% else %}
+  <div class="log-item">
+    <div class="log-header">
+      <div class="log-accent"></div>
+      <div class="log-text">
+        No workout history yet.
+      </div>
+    </div>
   </div>
+{% endif %}
 
-  <script>
-    function openSidebar() {
-      document.getElementById("sidebar").classList.add("open");
-      document.getElementById("overlay").classList.add("open");
-    }
+</div>
+</div>
+</main>
+</div>
 
-    function closeSidebar() {
-      document.getElementById("sidebar").classList.remove("open");
-      document.getElementById("overlay").classList.remove("open");
-    }
+<script>
+function toggleWorkout(element){
+  const parent = element.parentElement;
+  parent.classList.toggle("active");
+}
 
-    function navigateTo(path) {
-      closeSidebar();
-      window.location.href = path;
-    }
+function openSidebar(){
+  document.getElementById("sidebar").classList.add("open");
+  document.getElementById("overlay").classList.add("open");
+}
 
-    // close with ESC key
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeSidebar();
-    });
-  </script>
+function closeSidebar(){
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("overlay").classList.remove("open");
+}
+
+function navigateTo(path){
+  closeSidebar();
+  window.location.href = path;
+}
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") closeSidebar();
+});
+</script>
+
 </body>
 </html>

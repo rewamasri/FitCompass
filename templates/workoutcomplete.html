@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Workout Complete</title>
+
   <style>
     * {
       box-sizing: border-box;
-      font-family: 'Arial', sans-serif;
+      font-family: Arial, sans-serif;
     }
 
     body {
@@ -19,20 +20,36 @@
       align-items: center;
       justify-content: center;
       color: white;
+      position: relative;
     }
 
     .confetti {
-      position: absolute;
+      position: fixed;
       width: 100%;
       height: 100%;
-      background-image: radial-gradient(#ffd966 1px, transparent 1px),
-                        radial-gradient(#ff6f61 1px, transparent 1px),
-                        radial-gradient(#6ec6ff 1px, transparent 1px);
-      background-size: 40px 40px;
-      opacity: 0.6;
+      overflow: hidden;
+      top: 0;
+      left: 0;
       z-index: 0;
+      pointer-events: none;
     }
 
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 14px;
+      top: -20px;
+      animation: fall linear infinite;
+      opacity: 0.9;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(110vh) rotate(720deg);
+      }
+    }
+
+    
     .card {
       position: relative;
       z-index: 1;
@@ -44,19 +61,30 @@
       margin-bottom: 40px;
     }
 
-    .avatar {
-      width: 120px;
-      height: 200px;
+    
+    .avatar-complete {
+      width: 150px;
+      height: 220px;
       margin: 0 auto 40px;
-      background: #1f7ea3;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      opacity: 0.85;
+      position: relative;
     }
 
+    .michalis-layers {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .michalis-layers img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    
     .continue-btn {
       background: #9be37b;
       border: none;
@@ -77,19 +105,56 @@
     }
   </style>
 </head>
+
 <body>
+
   <div class="confetti"></div>
 
   <div class="card">
     <h1>WORKOUT COMPLETE!</h1>
 
-    <div class="avatar">
-      Avatar
+    
+    <div class="avatar-complete">
+      <div class="michalis-layers">
+        <div class="base-body"> 
+          <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="template">  
+        </div>
+        <div class="base-arms">
+          <img src="{{ url_for('static', filename='michalis/low arms.png') }}" alt="low arms">  
+        </div>
+        <div class="expression">
+          <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="smile">   
+        </div> 
+        <div class="sleeves">
+          <img src="{{ url_for('static', filename='outfits/low arms/' + (equipped if equipped else 'business') + ' low arms.png') }}" alt="sleeves">  
+        </div>
+        <div class="torso">
+          <img src="{{ url_for('static', filename='outfits/torso/' + (equipped if equipped else 'business') + ' torso.png') }}" alt="torso">  
+        </div>
+      </div>
     </div>
 
     <a href="{{ url_for('profile') }}">
       <button class="continue-btn">PROFILE</button>
-  </a>
+    </a>
   </div>
+
+  <script>
+    const confettiContainer = document.querySelector('.confetti');
+    const colors = ['#ffd966', '#ff6f61', '#6ec6ff', '#9be37b', '#ffffff'];
+
+    for (let i = 0; i < 150; i++) {
+      const confetti = document.createElement('div');
+      confetti.classList.add('confetti-piece');
+
+      confetti.style.left = Math.random() * 100 + 'vw';
+      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      confetti.style.animationDelay = Math.random() * 5 + 's';
+
+      confettiContainer.appendChild(confetti);
+    }
+  </script>
+
 </body>
 </html>
