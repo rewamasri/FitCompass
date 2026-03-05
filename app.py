@@ -1068,11 +1068,12 @@ def home():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT coins FROM UserLogins WHERE username = ?", (username,))
+    cursor.execute("SELECT coins, equipped_outfit FROM UserLogins WHERE username = ?", (username,))
     row = cursor.fetchone()
     conn.close()
 
     coins = row["coins"] if row else 0
+    equipped = row["equipped_outfit"] if row and row["equipped_outfit"] else "business"
     weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
@@ -1080,7 +1081,8 @@ def home():
         username=username,
         weekly_workouts=weekly_workouts,
         goal_percent=75,
-        points=coins
+        points=coins,
+        equipped=equipped
     )
 
 @app.route('/set_day', methods=['POST'])
@@ -1092,7 +1094,7 @@ def set_day():
 
 #when workoutsession is loaded, grab initialize exercise manager with exercises
 def workoutSession():
-    if "username" not in session:
+    if "username" not in session or session.get("user_id") not in loggedInUsers:
         return redirect(url_for("login"))
     user_id = session["user_id"]
     day_number = session.get('selected_day', 1)

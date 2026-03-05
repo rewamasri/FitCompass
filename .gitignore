@@ -2,4 +2,4 @@
 .env
 _pycache
 UserLogins.db
-UserOutfits.db
+__pycache__/landmarks.cpython-312.pyc
