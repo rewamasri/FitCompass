@@ -1083,6 +1083,10 @@ def home():
         points=coins
     )
 
+@app.route('/set_day', methods=['POST'])
+def set_day():
+    session['selected_day'] = request.get_json()['day']
+    return jsonify(status="success")
 
 @app.route('/workoutSession')
 
@@ -1091,8 +1095,8 @@ def workoutSession():
     if "username" not in session:
         return redirect(url_for("login"))
     user_id = session["user_id"]
-
-    today_exercises = get_today_exercises(session["username"], 1)
+    day_number = session.get('selected_day', 1)
+    today_exercises = get_today_exercises(session["username"], day_number)
     if not today_exercises:
         today_exercises = [{"name": "squats", "reps": "5"}]
 
