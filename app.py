@@ -1073,7 +1073,7 @@ def home():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT coins, current_workout, workouts_per_week
+        SELECT coins, current_workout, workouts_per_week ,equipped_outfit
         FROM UserLogins
         WHERE username = ?
     """, (username,))
@@ -1097,7 +1097,7 @@ def home():
         goal_percent = 0
 
 
-    equipped = row["equipped_outfit"] if row and row["equipped_outfit"] else "business"
+    equipped = row["equipped_outfit"] if row and row["equipped_outfit"] else "Business"
     weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
@@ -1105,7 +1105,7 @@ def home():
         username=username,
         weekly_workouts=weekly_workouts,
         goal_percent=goal_percent,
-        points=coins
+        points=coins,
         equipped=equipped
     )
 
