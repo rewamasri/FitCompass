@@ -256,6 +256,7 @@
             const card = document.getElementById(`card-${name}`);
             const wearBtn = card.querySelector(".wear-btn");
             const message = card.querySelector(".message");
+            const purchaseNoise = new Audio("{{ url_for('static', filename='audio/chaChing.mp3') }}");
 
             try {
                 const response = await fetch('/buy_costume', {
@@ -267,6 +268,7 @@
                 const result = await response.json();
 
                 if (result.status === "success") {
+                    chaChing.play();
                     userCoins = result.new_coins;
                     document.getElementById("coinDisplay").innerText = userCoins;
                     button.disabled = true;
@@ -286,6 +288,12 @@
 
         async function wearCostume(name) {
 
+            const costumeSounds = {
+                'jazzercise': new Audio('/static/audio/levelUp.mp3'),
+                'tracksuit': new Audio('/static/audio/letsGo.mp3'),
+                'business': new Audio('/static/audio/positiveNoise.mp3'),
+                'surfer': new Audio('/static/audio/cowabunga.mp3')
+            };
             try {
                 const response = await fetch('/wear_costume', {
                     method: 'POST',
@@ -298,6 +306,13 @@
             if (result.status === "success") {
                 document.getElementById("layer-torso").src = `/static/outfits/torso/${name} torso.png`;
                 document.getElementById("layer-sleeves").src = `/static/outfits/low arms/${name} low arms.png`;
+
+                if (costumeSounds[name]) {
+                    costumeSounds[name].currentTime = 0;
+                    costumeSounds[name].play().catch(err => {
+                        console.warn("Audio play blocked or file missing:", err);
+                    });
+                }
             }
         } catch (error) {
             console.error("Error wearing costume:", error);

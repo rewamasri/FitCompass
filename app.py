@@ -1096,6 +1096,8 @@ def home():
     else:
         goal_percent = 0
 
+
+    equipped = row["equipped_outfit"] if row and row["equipped_outfit"] else "business"
     weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
@@ -1104,8 +1106,13 @@ def home():
         weekly_workouts=weekly_workouts,
         goal_percent=goal_percent,
         points=coins
+        equipped=equipped
     )
 
+@app.route('/set_day', methods=['POST'])
+def set_day():
+    session['selected_day'] = request.get_json()['day']
+    return jsonify(status="success")
 
 @app.route('/workoutSession')
 
@@ -1114,9 +1121,8 @@ def workoutSession():
     if "username" not in session or session.get("user_id") not in loggedInUsers:
         return redirect(url_for("login"))
     user_id = session["user_id"]
-
-    today_exercises = get_today_exercises(session["username"], 1)
-    #today_exercises = get_today_exercises(session["username"], session["current_workout"])
+    day_number = session.get('selected_day', 1)
+    today_exercises = get_today_exercises(session["username"], day_number)
     if not today_exercises:
         today_exercises = [{"name": "squats", "reps": "5"}]
 

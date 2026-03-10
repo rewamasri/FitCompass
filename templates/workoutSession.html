@@ -437,7 +437,9 @@
 
 
        <script>
-const ding = new Audio("{{ url_for('static', filename='repding.mp3') }}");
+const ding = new Audio("{{ url_for('static', filename='audio/repding.mp3') }}");
+const exerciseComplete = new Audio("{{ url_for('static', filename='audio/exerciseComplete.mp3') }}");
+const HalfWayThere = new Audio("{{ url_for('static', filename='audio/HalfWayThere.mp3') }}");
 
 
 /* ---------------- GIF MAP ---------------- */
@@ -568,6 +570,7 @@ function startTimer(seconds) {
     clearInterval(timerInterval);
     remainingTime = seconds;
 
+    const halfWayPoint = Math.floor(seconds / 2);
 
     document.getElementById('timer_display').innerText = remainingTime;
 
@@ -576,6 +579,9 @@ function startTimer(seconds) {
         remainingTime--;
         document.getElementById('timer_display').innerText = remainingTime;
 
+        if (remainingTime === halfWayPoint) {
+          HalfWayThere.play();
+        }
 
         if (remainingTime <= 0) {
             clearInterval(timerInterval);
@@ -601,7 +607,7 @@ function normalizeName(name) {
 
 function moveToNextExercise() {
 
-
+    exerciseComplete.play();
     clearInterval(timerInterval);
 
 
@@ -648,16 +654,21 @@ function moveToNextExercise() {
 
 
 /* ---------------- UPDATE STATS ---------------- */
+//list of all audios (need to update) - amshu
+const motivationFiles = [
+    'yay1.mp3', 'yay2.mp3',
+    'yay3.mp3', 'yay4.mp3'
+];
 
-
+function getRandomMotivation() {
+    const randomIndex = Math.floor(Math.random() * motivationFiles.length);
+    return `static/audio/${motivationFiles[randomIndex]}`;
+}
+let milestonesReached = { p25: false, p50: false, p75: false };
 function updateStats() {
-
-
     if (workoutFinished) return;
 
-
     const current = workoutRoutine[routineIndex];
-
 
     // Skip timer exercises if (!current || current.type !== "time") return;
     if (!current || current.type !== "reps") return;
@@ -683,12 +694,27 @@ function updateStats() {
                 const percent = Math.round((repsCompleted / totalReps) * 100);
                 bar.style.width = percent + "%";
                 bar.textContent = percent + "%";
+
+                let milestoneToPlay = null;
+
+                if (percent >= 75 && !milestonesReached.p75) {
+                    milestoneToPlay = 'p75';
+                } else if (percent >= 50 && !milestonesReached.p50) {
+                    milestoneToPlay = 'p50';
+                } else if (percent >= 25 && !milestonesReached.p25) {
+                    milestoneToPlay = 'p25';
+                }
+
+                if (milestoneToPlay) {
+                    milestonesReached[milestoneToPlay] = true;
+                    const motivation = new Audio(getRandomMotivation());
+                    motivation.play().catch(e => console.error("Playback blocked:", e));
+                }
             }
 
 
             if (data.count >= current.target) {
-
-
+                milestonesReached = { p25: false, p50: false, p75: false };
                 clearInterval(statsInterval);  
                 statsInterval = null;
                 moveToNextExercise();

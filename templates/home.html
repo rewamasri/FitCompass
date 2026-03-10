@@ -308,11 +308,8 @@
 
 
       <!-- START BUTTON -->
-      <button
-        onclick="location.href='{{ url_for('workoutSession') }}'"
-        class="start-btn"
-        id="startBtn">
-        START
+      <button class="start-btn" id="startBtn" onclick="startWorkout()" disabled style="opacity:.5">
+          START!
       </button>
 
 
@@ -349,8 +346,10 @@
     5:"Friday",6:"Saturday",7:"Sunday"
   };
 
+  let selectedDay = 1;
 
   function showWorkout(day){
+    selectedDay=day;
     const title = document.getElementById("day-title");
     const content = document.getElementById("workout-content");
     const startBtn = document.getElementById("startBtn");
@@ -363,9 +362,7 @@
 
     title.textContent = `${dayNames[day]} Workout`;
 
-
     const exercises = weeklyWorkouts[`day_${day}`];
-
 
     if(exercises && exercises.length > 0){
       content.innerHTML = exercises.map(e => `
@@ -386,6 +383,15 @@
       startBtn.style.opacity = ".5";
     }
   }
+
+  function startWorkout(){
+      fetch('/set_day', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ day: selectedDay })
+      }).then(() => location.href = '/workoutSession');
+  }
+
 </script>
 
 
