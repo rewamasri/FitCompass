@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS UserLogins(
     body_part TEXT,
     coins INTEGER DEFAULT 1000,
     history TEXT DEFAULT '[]',
-    current_workout TEXT,
+    current_workout INTEGER,
     equipped_outfit TEXT,
     workout_plan TEXT
 )
@@ -1005,6 +1005,7 @@ def register():
         username = request.form['username']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
+        coins = 1000
 
         goal = request.form.get('goal')
         goal_other = request.form.get('goal_other') if goal == 'other' else None
@@ -1014,23 +1015,24 @@ def register():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
- 
+
             
             workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
 
-           
+          
+            current_workout = 0
+
             if 'all_selected_exercises' in globals():
                 goal_other = json.dumps(all_selected_exercises)
 
-            workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
-
-            
+           
             history = json.dumps([workout_plan])
 
             cursor.execute("""
                 INSERT INTO UserLogins
-                (username, email, password, goal, goal_other, workouts_per_week, body_part, workout_plan, history)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (username, email, password, goal, goal_other, workouts_per_week,
+                 body_part, workout_plan, history, current_workout,coins)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
             """, (
                 username,
                 email,
@@ -1040,7 +1042,9 @@ def register():
                 workouts_per_week,
                 body_part,
                 workout_plan,
-                history
+                history,
+                current_workout,
+                coins
             ))
 
             conn.commit()
@@ -1068,11 +1072,31 @@ def home():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT coins, equipped_outfit FROM UserLogins WHERE username = ?", (username,))
+    cursor.execute("""
+        SELECT coins, current_workout, workouts_per_week
+        FROM UserLogins
+        WHERE username = ?
+    """, (username,))
+
     row = cursor.fetchone()
     conn.close()
 
-    coins = row["coins"] if row else 0
+    if row:
+        coins = int(row["coins"] or 0)
+        current_workout = int(row["current_workout"] or 0)
+        workouts_per_week = int(row["workouts_per_week"] or 1)
+    else:
+        coins = 0
+        current_workout = 0
+        workouts_per_week = 1
+
+   
+    if workouts_per_week > 0:
+        goal_percent = int((current_workout / workouts_per_week) * 100)
+    else:
+        goal_percent = 0
+
+
     equipped = row["equipped_outfit"] if row and row["equipped_outfit"] else "business"
     weekly_workouts = get_weekly_workouts(username)
 
@@ -1080,8 +1104,8 @@ def home():
         "home.html",
         username=username,
         weekly_workouts=weekly_workouts,
-        goal_percent=75,
-        points=coins,
+        goal_percent=goal_percent,
+        points=coins
         equipped=equipped
     )
 
@@ -1171,6 +1195,35 @@ def workoutcomplete():
     if "username" not in session:
         return redirect(url_for("login"))
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT coins, current_workout
+        FROM UserLogins
+        WHERE username = ?
+    """, (session["username"],))
+
+    user = cursor.fetchone()
+
+    if user:
+        current_coins = int(user["coins"] or 0)
+        current_workout = int(user["current_workout"] or 0)
+
+        new_coins = current_coins + 150
+        new_current_workout = current_workout + 1
+
+        cursor.execute("""
+            UPDATE UserLogins
+            SET coins = ?, current_workout = ?
+            WHERE username = ?
+        """, (
+            new_coins,
+            new_current_workout,
+            session["username"]
+        ))
+        conn.commit()
+    conn.close()
     return render_template("workoutcomplete.html")
 
 
@@ -1186,7 +1239,10 @@ def profile():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT username, email, goal, workouts_per_week,coins
+        SELECT username, email, goal,
+               workouts_per_week,
+               coins,
+               current_workout
         FROM UserLogins
         WHERE username = ?
     """, (session["username"],))
@@ -1197,15 +1253,26 @@ def profile():
     if not user:
         return redirect(url_for("login"))
 
+    workouts_per_week = int(user["workouts_per_week"] or 1)
+    current_workout = int(user["current_workout"] or 0)
+
+    if workouts_per_week > 0:
+        goal_percent = int((current_workout / workouts_per_week) * 100)
+    else:
+        goal_percent = 0
+
+    
+    if goal_percent >= 100:
+        return redirect(url_for("profileEdit"))
+
     return render_template(
         "profile.html",
         username=user["username"],
         email=user["email"],
         goal=user["goal"],
-        workouts_per_week=user["workouts_per_week"],
-        points=user["coins"],
-        goal_percent=75,
-
+        workouts_per_week=workouts_per_week,
+        points=int(user["coins"] or 0),
+        goal_percent=goal_percent
     )
 
 @app.route("/profileEdit", methods=["GET", "POST"])
@@ -1223,6 +1290,7 @@ def profileEdit():
         goal = request.form["goal"]
         workouts_per_week = int(request.form["workouts_per_week"])
         body_part = request.form["body_part"]
+        current_workout = 0
 
         workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
 
@@ -1266,7 +1334,8 @@ def profileEdit():
                 body_part = ?, 
                 workout_plan = ?,
                 history = ?,
-                goal_other = ?
+                goal_other = ?,
+                current_workout =?
             WHERE username = ?
         """, (
             email_to_save,
@@ -1276,6 +1345,7 @@ def profileEdit():
             workout_plan,
             updated_history,
             goal_other,
+            current_workout,
             session["username"]
         ))
 
@@ -1309,9 +1379,43 @@ def profileEdit():
         body_part=user["body_part"]
     )
 
+
+@app.route("/workoutLog")
+def workoutLog():
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT coins, history
+        FROM UserLogins
+        WHERE username = ?
+    """, (session["username"],))
+
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user:
+        return redirect(url_for("login"))
+
+    
+    if user["history"]:
+        history = json.loads(user["history"])
+    else:
+        history = []
+
+    return render_template(
+        "workoutLog.html",
+        points=user["coins"],
+        history=history
+    )
+
 @app.route('/history')
 def history():
-    return render_template("workoutLog.html")
+    return redirect(url_for('workoutLog'))
+
 
 
 @app.route('/shop')

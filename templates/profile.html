@@ -121,10 +121,27 @@ body{
   overflow:hidden;
 }
 
-.profile-pic img{
+.profile-pic{
+  width:150px;
+  height:200px;
+  margin-bottom:15px;
+  position:relative;
+  overflow:hidden;
+}
+
+.michalis-layers{
+  position:relative;
   width:100%;
   height:100%;
-  object-fit:cover;
+}
+
+.michalis-layers img{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
 }
 
 .profile-info p{
@@ -205,8 +222,20 @@ body{
    
     <div class="profile-card">
       <div class="profile-pic">
-        <img src="{{ url_for('static', filename='default_profile.png') }}">
-      </div>
+  <div class="michalis-layers">
+
+    <img src="{{ url_for('static', filename='michalis/template.png') }}">
+
+    <img src="{{ url_for('static', filename='michalis/low arms.png') }}">
+
+    <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}">
+
+    <img src="{{ url_for('static', filename='outfits/low arms/' + (equipped if equipped else 'business') + ' low arms.png') }}">
+
+    <img src="{{ url_for('static', filename='outfits/torso/' + (equipped if equipped else 'business') + ' torso.png') }}">
+
+  </div>
+</div>
 
       <div class="profile-info">
         <p><strong>Username:</strong> {{ username }}</p>
