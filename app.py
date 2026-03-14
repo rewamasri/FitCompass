@@ -1387,6 +1387,106 @@ def profileEdit():
         body_part=user["body_part"]
     )
 
+@app.route("/newWorkout", methods=["GET", "POST"])
+def newWorkout():
+
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == "POST":
+
+       
+        goal = request.form["goal"]
+        workouts_per_week = int(request.form["workouts_per_week"])
+        body_part = request.form["body_part"]
+        current_workout = 0
+
+        workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
+
+        if 'all_selected_exercises' in globals():
+            goal_other = json.dumps(all_selected_exercises)
+        else:
+            goal_other = None
+
+        cursor.execute(
+            "SELECT history FROM UserLogins WHERE username = ?",
+            (session["username"],)
+        )
+        row = cursor.fetchone()
+
+
+        cursor.execute(
+            "SELECT username FROM UserLogins WHERE email = ? AND username != ?",
+            ( session["username"])
+        )
+        existing_user = cursor.fetchone()
+
+
+
+        if row and row["history"]:
+            history = json.loads(row["history"])
+        else:
+            history = []
+
+        history.append(workout_plan)
+        updated_history = json.dumps(history)
+
+        cursor.execute("""
+            UPDATE UserLogins
+            SET 
+                goal = ?, 
+                workouts_per_week = ?, 
+                body_part = ?, 
+                workout_plan = ?,
+                history = ?,
+                goal_other = ?,
+                current_workout =?
+            WHERE username = ?
+        """, (
+            
+            goal,
+            workouts_per_week,
+            body_part,
+            workout_plan,
+            updated_history,
+            goal_other,
+            current_workout,
+            session["username"]
+        ))
+
+        conn.commit()
+        conn.close()
+
+        if existing_user:
+            flash("Email already exists. Kept your old email. Profile updated!")
+        else:
+            flash("Profile updated and workout plan added to history!")
+
+        return redirect(url_for("profile"))
+
+    cursor.execute("""
+        SELECT email, goal, goal_other,
+               workouts_per_week, 
+               body_part, workout_plan
+        FROM UserLogins
+        WHERE username = ?
+    """, (session["username"],))
+
+    user = cursor.fetchone()
+    conn.close()
+
+    return render_template(
+        "newWorkout.html",
+        email=user["email"],
+        goal=user["goal"],
+        goal_other=user["goal_other"],
+        workouts_per_week=user["workouts_per_week"],
+        body_part=user["body_part"]
+    )
+
 
 @app.route("/workoutLog")
 def workoutLog():
