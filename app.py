@@ -1199,7 +1199,7 @@ def workoutcomplete():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT coins, current_workout
+        SELECT coins, current_workout, equipped_outfit
         FROM UserLogins
         WHERE username = ?
     """, (session["username"],))
@@ -1223,8 +1223,13 @@ def workoutcomplete():
             session["username"]
         ))
         conn.commit()
+        equipped = user["equipped_outfit"] if user["equipped_outfit"] else "business"
     conn.close()
-    return render_template("workoutcomplete.html")
+
+    return render_template(
+        "workoutcomplete.html",
+        equipped=equipped
+    )
 
 
 # -------------------------
@@ -1242,7 +1247,8 @@ def profile():
         SELECT username, email, goal,
                workouts_per_week,
                coins,
-               current_workout
+               current_workout,
+               equipped_outfit
         FROM UserLogins
         WHERE username = ?
     """, (session["username"],))
@@ -1261,9 +1267,10 @@ def profile():
     else:
         goal_percent = 0
 
-    
     if goal_percent >= 100:
-        return redirect(url_for("profileEdit"))
+        goal_percent = 100
+
+    equipped = user["equipped_outfit"] if user and user["equipped_outfit"] else "Business"
 
     return render_template(
         "profile.html",
@@ -1272,7 +1279,8 @@ def profile():
         goal=user["goal"],
         workouts_per_week=workouts_per_week,
         points=int(user["coins"] or 0),
-        goal_percent=goal_percent
+        goal_percent=goal_percent,
+        equipped=equipped
     )
 
 @app.route("/profileEdit", methods=["GET", "POST"])

@@ -6,14 +6,19 @@
   <title>Workout Complete</title>
 
   <style>
+
+    :root{
+      --font:ui-monospace, Menlo, Consolas, monospace;
+    }
+
     * {
       box-sizing: border-box;
-      font-family: Arial, sans-serif;
+      font-family: var(--font);
     }
 
     body {
       margin: 0;
-      height: 100vh;
+      min-height: 100vh;
       background: #0a4f73;
       overflow: hidden;
       display: flex;
@@ -21,6 +26,7 @@
       justify-content: center;
       color: white;
       position: relative;
+      padding: 20px;
     }
 
     .confetti {
@@ -49,11 +55,12 @@
       }
     }
 
-    
     .card {
       position: relative;
       z-index: 1;
       text-align: center;
+      width: 100%;
+      max-width: 450px;
     }
 
     h1 {
@@ -61,7 +68,6 @@
       margin-bottom: 40px;
     }
 
-    
     .avatar-complete {
       width: 150px;
       height: 220px;
@@ -84,7 +90,6 @@
       object-fit: contain;
     }
 
-    
     .continue-btn {
       background: #9be37b;
       border: none;
@@ -93,6 +98,7 @@
       border-radius: 6px;
       cursor: pointer;
       letter-spacing: 3px;
+      font-family: var(--font);
     }
 
     .continue-btn:hover {
@@ -103,6 +109,27 @@
       text-decoration: none;
       color: black;
     }
+
+
+    @media (max-width: 600px) {
+
+      h1 {
+        font-size: 22px;
+        margin-bottom: 30px;
+      }
+
+      .avatar-complete {
+        width: 120px;
+        height: 180px;
+      }
+
+      .continue-btn {
+        font-size: 22px;
+        padding: 14px 34px;
+      }
+
+    }
+
   </style>
 </head>
 
@@ -113,7 +140,6 @@
   <div class="card">
     <h1>WORKOUT COMPLETE!</h1>
 
-    
     <div class="avatar-complete">
       <div class="michalis-layers">
         <div class="base-body"> 

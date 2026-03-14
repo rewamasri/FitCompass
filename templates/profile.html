@@ -110,20 +110,13 @@ body{
 }
 
 .profile-pic{
-  width:120px;
-  height:120px;
-  border-radius:50%;
+  width:150px;
+  height:200px;
+  border-radius:0; /* makes it square instead of circle */
   background:rgba(0,0,0,.15);
   display:flex;
   align-items:center;
   justify-content:center;
-  margin-bottom:15px;
-  overflow:hidden;
-}
-
-.profile-pic{
-  width:150px;
-  height:200px;
   margin-bottom:15px;
   position:relative;
   overflow:hidden;
@@ -177,14 +170,34 @@ body{
 }
 
 .edit-btn{
-  margin-top:15px;
-  padding:10px 16px;
+  margin-top:18px;
+  width:100%;
+  padding:12px;
+
   border:none;
-  border-radius:8px;
+  border-radius:10px;
+
   background:var(--btn-green);
-  cursor:pointer;
+  color:var(--text-dark);
+
   font-family:var(--font);
+  font-size:15px;
   font-weight:bold;
+
+  cursor:pointer;
+
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  transition:all 0.2s ease;
+}
+
+.edit-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(0,0,0,.2);
+  background:#8fce82;
+}
+
+.edit-btn:active{
+  transform:scale(0.98);
 }
 </style>
 </head>
@@ -222,19 +235,21 @@ body{
    
     <div class="profile-card">
       <div class="profile-pic">
+ <div class="profile-pic">
   <div class="michalis-layers">
 
-    <img src="{{ url_for('static', filename='michalis/template.png') }}">
+    <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="body">
 
-    <img src="{{ url_for('static', filename='michalis/low arms.png') }}">
+    <img src="{{ url_for('static', filename='michalis/low arms.png') }}" alt="arms">
 
-    <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}">
+    <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="face">
 
-    <img src="{{ url_for('static', filename='outfits/low arms/' + (equipped if equipped else 'business') + ' low arms.png') }}">
+    <img src="{{ url_for('static', filename='outfits/low arms/' + (equipped if equipped else 'business') + ' low arms.png') }}" alt="sleeves">
 
-    <img src="{{ url_for('static', filename='outfits/torso/' + (equipped if equipped else 'business') + ' torso.png') }}">
+    <img src="{{ url_for('static', filename='outfits/torso/' + (equipped if equipped else 'business') + ' torso.png') }}" alt="torso">
 
   </div>
+</div>
 </div>
 
       <div class="profile-info">
@@ -245,9 +260,9 @@ body{
         <p><strong>Workouts Per Week:</strong> {{ workouts_per_week }}</p>
       </div>
 
-      <button onclick="location.href='{{ url_for('profileEdit') }}'">
-        Edit Profile
-      </button>
+      <button class="edit-btn" onclick="location.href='{{ url_for('profileEdit') }}'">
+      Edit Profile
+    </button>
     </div>
 
     
