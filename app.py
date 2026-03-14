@@ -1418,14 +1418,6 @@ def newWorkout():
         row = cursor.fetchone()
 
 
-        cursor.execute(
-            "SELECT username FROM UserLogins WHERE email = ? AND username != ?",
-            ( session["username"])
-        )
-        existing_user = cursor.fetchone()
-
-
-
         if row and row["history"]:
             history = json.loads(row["history"])
         else:
@@ -1460,10 +1452,7 @@ def newWorkout():
         conn.commit()
         conn.close()
 
-        if existing_user:
-            flash("Email already exists. Kept your old email. Profile updated!")
-        else:
-            flash("Profile updated and workout plan added to history!")
+        
 
         return redirect(url_for("profile"))
 
