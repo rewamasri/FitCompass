@@ -103,6 +103,18 @@
       text-decoration: none;
       color: black;
     }
+    .std-display {
+      display: none; 
+    }
+ @keyframes bounce {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-12px); }
+  100% { transform: translateY(0); }
+}
+
+.bounce {
+  animation: bounce 1s ease-in-out infinite;
+}
   </style>
 </head>
 
@@ -112,22 +124,26 @@
 
   <div class="card">
     <h1>WORKOUT COMPLETE!</h1>
+    <p>Total reps: {{ this_total_reps }} reps</p>
 
-    
+  <p>Time to complete: {{ "%.1f"|format(this_workout_duration) }} seconds</p>
+  <p id="squats-row" class="std-display">Squat consistency: <span id="squats-std">...</span></p>
+  <p id="lunges-row" class="std-display">Lunge consistency: <span id="lunges-std">...</span></p>
+  <p id="situps-row" class="std-display">Situp consistency: <span id="situps-std">...</span></p>
     <div class="avatar-complete">
-      <div class="michalis-layers">
+      <div  class=" bounce michalis-layers">
         <div class="base-body"> 
           <img src="{{ url_for('static', filename='michalis/template.png') }}" alt="template">  
         </div>
         <div class="base-arms">
-          <img src="{{ url_for('static', filename='michalis/low arms.png') }}" alt="low arms">  
+          <img src="{{ url_for('static', filename='michalis/high arms.png') }}" alt="high arms">  
         </div>
         <div class="expression">
-          <img src="{{ url_for('static', filename='michalis/slightsmile.png') }}" alt="smile">   
+          <img src="{{ url_for('static', filename='michalis/bigsmile.png') }}" alt="smile">   
         </div> 
-        <div class="sleeves">
-          <img src="{{ url_for('static', filename='outfits/low arms/' + (equipped if equipped else 'business') + ' low arms.png') }}" alt="sleeves">  
-        </div>
+        <img id="layer-sleeves" 
+                    src="{{ url_for('static', filename='outfits/high arms/' + (equipped if equipped else 'business') + ' high arms.png') }}" 
+                    alt="sleeves">  
         <div class="torso">
           <img src="{{ url_for('static', filename='outfits/torso/' + (equipped if equipped else 'business') + ' torso.png') }}" alt="torso">  
         </div>
@@ -140,6 +156,40 @@
   </div>
 
   <script>
+    async function getConsistencyScore() {
+    try {
+        const response =  await fetch('/get_interval_std');
+        const stats =  await response.json(); // intervalSTDMap dict
+
+        for (const [exercise, score] of Object.entries(stats)) {
+            const row = document.getElementById(`${exercise}-row`);
+            const span = document.getElementById(`${exercise}-std`);
+            
+            if (row && span) {
+                span.innerText = ` ${score}%`;
+                // show the <p>
+                row.style.display = "block"; 
+            }
+        }
+        } catch (error) {
+            console.error("Failed to fetch consistency stats:", error);
+        }
+      }
+      
+  document.addEventListener('DOMContentLoaded', () => {
+    getConsistencyScore();
+  });
+
+  const arms = document.querySelector(".base-arms img");
+
+// setInterval(() => {
+//     if (arms.src.includes("high arms")) {
+//         arms.src = "/static/michalis/low arms.png";
+//     } else {
+//         arms.src = "/static/michalis/high arms.png";
+//     }
+// }, 400);
+
     const confettiContainer = document.querySelector('.confetti');
     const colors = ['#ffd966', '#ff6f61', '#6ec6ff', '#9be37b', '#ffffff'];
 

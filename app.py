@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask_mail import Mail,Message
+import dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
@@ -13,6 +15,14 @@ import time
 from flask import Response
 import random
 import json
+import time
+from pprint import pprint
+
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+import smtplib
 
 from landmarks import *
 
@@ -29,7 +39,11 @@ detector = vision.PoseLandmarker.create_from_options(options)
 app = Flask(__name__)
 app.secret_key = "fitcompass_secret_key"
 
+
+
+
 currentDirectory = os.path.dirname(os.path.abspath(__file__))
+
 db_path = os.path.join(currentDirectory, "UserLogins.db")
 
 def get_db_connection():
@@ -134,6 +148,8 @@ class SitUpController:
         self.bodyBendAngle=0 #the idle state means the angle between the rays from hip to head and hip to ankle has to be about flat
         self.kneeAngle=0 #knees should be bent in a situp
         self.heel_anchor=None #heel shouldnt move very much
+        self.last_rep_time= None
+        self.intervals=[]        
         #dont care about the arms for now
 
     def update(self,detection_result, image_shape):
@@ -176,17 +192,28 @@ class SitUpController:
             elif self.bodyBendAngle<110: #more and more bent
                 self.state=SitUpState.TOP
                 return
+            
         elif self.state==SitUpState.TOP:
             if self.kneeAngle>110: #knees not bent enough! go back to idle
                 self.state=SitUpState.IDLE
                 return
             
             elif self.bodyBendAngle>165:
+                current_time = time.monotonic()
+                interval=0
+                if self.last_rep_time is not None:
+                    interval=current_time-self.last_rep_time    
+                    self.intervals.append(interval)
+                    print(f"time between reps: {interval}")
+                
+                self.last_rep_time=current_time    
                 self.count=self.count+1
                 self.state=SitUpState.IDLE
                 return
-        
-
+    
+    def getIntervals(self):
+        return self.intervals
+    
     def draw(self,image, detection_result):
         annotated_image = image.copy()
         if not detection_result.pose_landmarks:
@@ -222,6 +249,10 @@ class SquatController:
         self.knee_angle = 0
         self.heel_anchor = None
         self.down_start_time = None
+        self.start_time = 0
+        self.end_time=0
+        self.last_rep_time= None
+        self.intervals=[]
 
     def update(self, detection_result, image_shape):
         if not detection_result or not detection_result.pose_landmarks:
@@ -241,10 +272,9 @@ class SquatController:
         self.right_knee_angle=angleBetweenLines(right_hip,right_knee,right_heel)
               
         if self.state == SquatState.IDLE:
+            
             if self.left_knee_angle>140 and self.right_knee_angle >140:
                 self.heel_anchor = np.array(left_heel)
-
-        
             left_hip = np.array(left_hip)
             left_heel = np.array(left_heel)
 
@@ -256,7 +286,8 @@ class SquatController:
             if(not (-2> slope or  slope>2)): #line from hip to ankle must be mostly vertical
                 return
 
-            if self.left_knee_angle<120 and self.right_knee_angle <120:
+            
+            if self.left_knee_angle<140 and self.right_knee_angle <140:
                 self.state=SquatState.BEGIN
                 return
             
@@ -272,6 +303,8 @@ class SquatController:
                 return
 
             if self.left_knee_angle<80 and self.right_knee_angle <80 : #80 degree squat
+                self.start_time = time.time()
+
                 self.state = SquatState.DOWN
                 self.down_start_time = time.time()
                 return
@@ -285,9 +318,20 @@ class SquatController:
 
         elif self.state ==  SquatState.RISE:
             if self.left_knee_angle <160  and self.right_knee_angle<160 :
+                current_time = time.monotonic()
+                interval=0
+                if self.last_rep_time is not None:
+                    interval=current_time-self.last_rep_time    
+                    self.intervals.append(interval)
+                    print(f"time between reps: {interval}")
+                
+                self.last_rep_time=current_time    
                 self.count += 1
                 self.state = SquatState.IDLE
                 print(f"Count: {self.count}")
+    
+    def getIntervals(self):
+        return self.intervals
     
     def draw(self,image, detection_result):
         annotated_image = image.copy()
@@ -327,6 +371,8 @@ class LungeController:
         self.heelToHeelDistance=0
         self.calfLength=0 #this is a constant
         self.idleHipHeight=0
+        self.last_rep_time= None
+        self.intervals=[]
     
     def update(self,detection_result, image_shape):
         if not detection_result or not detection_result.pose_landmarks:
@@ -396,7 +442,7 @@ class LungeController:
                 self.state=LungeState.DOWN
                 return
  
-        if self.state==LungeState.DOWN:
+        elif self.state==LungeState.DOWN:
 
             left_heel = np.array(left_heel)
             right_heel = np.array(right_heel)
@@ -405,15 +451,24 @@ class LungeController:
             if(abs(self.heelToHeelDistance) < self.calfLength *1.3):
                 self.state=LungeState.ASCENDING
                 self.count=self.count+1
-                return
         
-        if self.state==LungeState.ASCENDING:
+        elif self.state==LungeState.ASCENDING:
             self.right_knee_angle=angleBetweenLines(right_hip,right_knee,right_heel)
             self.left_knee_angle=angleBetweenLines(left_hip,left_knee,left_heel)
-            if(self.right_knee_angle > 140 and self.left_knee_angle >140):
-                self.state=LungeState.IDLE
+            if (self.right_knee_angle > 140 and self.left_knee_angle > 140):
+                current_time = time.monotonic()
+                if self.last_rep_time is not None:
+                    interval = current_time - self.last_rep_time
+                    self.intervals.append(interval)
+                    print(f"Interval recorded: {interval:.2f}s")
+                
+                # ALWAYS update the last_rep_time, even on the first rep
+                self.last_rep_time = current_time 
+                
+                self.state = LungeState.IDLE
                 return
- 
+    def getIntervals(self):
+        return self.intervals
     def draw(self,image, detection_result):
         annotated_image = image.copy()
         if not detection_result.pose_landmarks:
@@ -686,6 +741,12 @@ class ExerciseManager:
 
         self.exercises = {}
 
+        self.allExerciseIntervals={}
+        self.workout_begin_time=None
+        self.workout_end_time=None
+
+        self.total_reps=None
+
         for ex in today_exercises:
 
             clean = normalize_name(ex)
@@ -699,7 +760,7 @@ class ExerciseManager:
         )
 
 
-    def getCurrentExercise(self):
+    def getCurrentExercise(self): #this getse the CONTROLLER
         if not self.currentExercise:
             return None
         return self.exercises[self.currentExercise]
@@ -708,6 +769,13 @@ class ExerciseManager:
         clean = normalize_name(name)
         if clean in self.exercises:
             self.currentExercise = clean
+
+    def finalize_all_intervals(self):
+        """Call this right before workoutcomplete or printing stats."""
+        for name, controller in self.exercises.items():
+            # Only save if there's actually data
+            if hasattr(controller, 'intervals') and controller.intervals:
+                self.allExerciseIntervals[name] = controller.intervals
 
 @app.route('/switch_exercise', methods=["POST"])
 def switch_exercise():
@@ -718,6 +786,11 @@ def switch_exercise():
         return jsonify(error="User not active")
 
     currentUser = loggedInUsers[user_id]
+    old_exercise_name = currentUser.exerciseManager.currentExercise
+    currentExerciseController=currentUser.exerciseManager.getCurrentExercise()
+    intervals=currentExerciseController.getIntervals()
+    currentUser.exerciseManager.allExerciseIntervals[old_exercise_name]=intervals
+
 
     if not currentUser.exerciseManager:
         return jsonify(error="No active workout")
@@ -726,6 +799,7 @@ def switch_exercise():
     new_exercise = data.get('exercise')
 
     currentUser.exerciseManager.setCurrentExercise(new_exercise)
+
 
     return jsonify(status="success", now_doing=new_exercise)
 
@@ -1114,8 +1188,19 @@ def set_day():
     session['selected_day'] = request.get_json()['day']
     return jsonify(status="success")
 
-@app.route('/workoutSession')
 
+#this func is ai
+@app.route('/start_workout', methods=['POST'])
+def start_workout():
+    if "username" not in session or session.get("user_id") not in loggedInUsers:
+        return "", 403
+
+    user_id = session["user_id"]
+    loggedInUsers[user_id].exerciseManager.workout_begin_time = time.time()
+
+    return "", 204
+
+@app.route('/workoutSession')
 #when workoutsession is loaded, grab initialize exercise manager with exercises
 def workoutSession():
     if "username" not in session or session.get("user_id") not in loggedInUsers:
@@ -1129,6 +1214,8 @@ def workoutSession():
     names = [ex["name"] for ex in today_exercises]
 
     loggedInUsers[user_id].exerciseManager = ExerciseManager(names)
+
+    # loggedInUsers[user_id].exerciseManager.workout_begin_time=time.time()
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1175,7 +1262,21 @@ def library():
                 {"name": "running", "reps": "45"},
                 {"name": "jumpingjacks", "reps": "45"},
                 {"name": "lunges", "reps": "3"}
-            ]
+            ],
+            "MichalisMode1": [
+                {"name": "squats", "reps": "1"},
+                {"name": "lunges", "reps": "1"},
+            ],
+            "MichalisMode2": [
+                {"name": "squats", "reps": "2"},
+                {"name": "lunges", "reps": "2"},
+                {"name": "running", "reps": "10"},
+            ],
+            "PresentationDemo": [
+                {"name": "squats", "reps": "4"},
+                {"name": "situps", "reps": "6"},
+                {"name": "lunges", "reps": "4"},
+            ],
         }
         
         if choice in routines:
@@ -1188,12 +1289,77 @@ def library():
             
     return render_template("library.html")
 
+import statistics
+
+#flask route
+@app.route('/get_interval_std')
+def get_consistency_stats():
+    if "username" not in session or session.get("user_id") not in loggedInUsers:
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+    loggedInUsers[session["user_id"]].exerciseManager.finalize_all_intervals()
+    intervalsMap=loggedInUsers[user_id].exerciseManager.allExerciseIntervals
+    consistencyScoreMap = {}
+    for exercise_name, intervals in intervalsMap.items():
+        if len(intervals)>1:
+            std_dev = statistics.stdev(intervals)
+            cappedStd = min(std_dev, 20)
+            score = (1 - cappedStd / 20) * 100
+            consistencyScoreMap[exercise_name]=round(score, 2)
+        else:
+            consistencyScoreMap[exercise_name]=100
+    return jsonify(consistencyScoreMap)
+
+#non flask route for sending to email.
+def get_formatted_consistency_scores(user_id):
+    if user_id not in loggedInUsers:
+        return None     
+    manager = loggedInUsers[user_id].exerciseManager
+    manager.finalize_all_intervals()
+    intervals_map = manager.allExerciseIntervals
+    
+    scores = {}
+    for exercise_name, intervals in intervals_map.items():
+        if len(intervals) > 1:
+            std_dev = statistics.stdev(intervals)
+            capped_std = min(std_dev, 20)
+            score = (1 - capped_std / 20) * 100
+            scores[exercise_name] = round(score, 2)
+        else:
+            scores[exercise_name] = 100
+    html = '<ul class="consistency-list">'
+    for exercise, score in scores.items():
+        color = "green" if score > 60 else "red"
+        html += f'<li>{exercise.capitalize()}: <span style="color:{color}">{score}%</span></li>'
+    html += '</ul>'
+    return html
+    #now consistency scores is moved away from the flask route
+   
+@app.route('/send_total_reps', methods=['POST'])
+def send_total_reps():
+    data = request.get_json()
+    total_reps = data.get("total_reps")
+    user_id = session["user_id"]
+    loggedInUsers[user_id].exerciseManager.total_reps = total_reps
+
+    return {"status": "ok"}
 
 @app.route('/workoutcomplete')
 def workoutcomplete():
 
-    if "username" not in session:
+    # if "username" not in session:
+    #     return redirect(url_for("login"))
+    if "username" not in session or session.get("user_id") not in loggedInUsers:
         return redirect(url_for("login"))
+    user_id = session["user_id"]
+    loggedInUsers[session["user_id"]].exerciseManager.finalize_all_intervals()
+    pprint(loggedInUsers[user_id].exerciseManager.allExerciseIntervals)
+    
+    loggedInUsers[user_id].exerciseManager.workout_end_time=time.time()
+    workout_duration=loggedInUsers[user_id].exerciseManager.workout_end_time-loggedInUsers[user_id].exerciseManager.workout_begin_time
+    intervalsMap=loggedInUsers[user_id].exerciseManager.allExerciseIntervals
+
+    total_reps = loggedInUsers[user_id].exerciseManager.total_reps
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1224,8 +1390,33 @@ def workoutcomplete():
         ))
         conn.commit()
     conn.close()
-    return render_template("workoutcomplete.html")
 
+    '''
+    consistency_snippet = get_formatted_consistency_scores(user_id)
+    msg = MIMEMultipart()
+    msg['Subject'] = "Workout Summary!"
+    msg['From'] =  "doodler4000@gmail.com" #dummy fitcompass email
+    msg['To'] = "amberlin618@gmail.com" #change this to the email the user provides
+    report_html = f"""
+        <div class="workout-report">
+            <h2>Workout Summary!</h2>
+            <p><strong>Total Reps:</strong> {total_reps} reps</p>
+            <p><strong>Duration:</strong> {workout_duration:.1f} seconds</p>
+            <h3>Consistency Scores:</h3>
+            {consistency_snippet}
+        </div>
+        """
+    # part = MIMEText(report_html, 'html')
+    # msg.attach(part)
+    # smtp = smtplib.SMTP('smtp.gmail.com', 587)
+    # smtp.starttls()
+    #first argument is email, second is google app password
+    #smtp.login('sender email@gmail.com', 'sender app password')
+    smtp.sendmail(msg['From'], [msg['To']], msg.as_string())   
+    smtp.quit() 
+    '''
+
+    return render_template("workoutcomplete.html",this_workout_duration= workout_duration,this_total_reps=total_reps )
 
 # -------------------------
 # Placeholder
