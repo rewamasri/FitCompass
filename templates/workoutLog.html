@@ -26,10 +26,75 @@ body{
   color:white;
 }
 
-.app{ display:flex; min-height:100vh; }
+.app{
+  display:flex;
+  min-height:100vh;
+}
+
+/* sidebar (same as home page) */
+
+
+.sidebar{
+  width:260px;
+  background:var(--bg-sidebar);
+  color:var(--text-dark);
+  display:flex;
+  flex-direction:column;
+  padding:18px 14px;
+  border-right:3px solid rgba(0,0,0,.08);
+
+  position:fixed;
+  top:0;
+  left:0;
+  height:100vh;
+}
+
+.sidebar-title{
+  font-size:20px;
+  margin-bottom:10px;
+}
+
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  flex:1;
+}
+
+.banner{
+  background:rgba(255,255,255,.12);
+  padding:14px;
+  border-radius:12px;
+  margin:20px;
+  margin-bottom:0;
+}
+
+.nav button{
+  border:none;
+  border-radius:10px;
+  padding:12px;
+  background:white;
+  font-family:var(--font);
+  cursor:pointer;
+  text-align:left;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+
+.logout button{
+  border:none;
+  border-radius:10px;
+  padding:14px;
+  background:#d83a4a;
+  font-family:var(--font);
+  cursor:pointer;
+  color:white;
+}
+
+/* MAIN */
 
 .main{
   flex:1;
+  margin-left:260px;
   background: var(--bg-main);
 }
 
@@ -41,16 +106,6 @@ body{
   align-items:center;
   padding:0 22px;
   gap:14px;
-}
-
-.sidebar-toggle{
-  border:none;
-  background:white;
-  width:44px;
-  height:44px;
-  border-radius:12px;
-  cursor:pointer;
-  font-size:22px;
 }
 
 .top-strip h1{
@@ -68,7 +123,9 @@ body{
   color:#0f1a1f;
 }
 
-.content{ padding:28px; }
+.content{
+  padding:28px;
+}
 
 .log-list{
   width:min(650px,95%);
@@ -114,15 +171,29 @@ body{
 
 .log-body{
   display:none;
-
-  padding:18px;
-  background:#0f2330;
-
-  border-top:1px solid rgba(255,255,255,.15);
-
-  display:none;
+  padding:22px;
+  background:linear-gradient(
+    rgba(20,40,50,.9),
+    rgba(15,30,40,.95)
+  );
+  border-top:1px solid rgba(255,255,255,.12);
+  color:#e6f4f7;
+  font-size:14px;
+  line-height:1.9;
+  letter-spacing:.03em;
+  border-radius:0 0 12px 12px;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,.35),
+    0 6px 16px rgba(0,0,0,.25);
+  white-space:pre-wrap;
+  max-height:260px;
+  overflow-y:auto;
   flex-direction:column;
   gap:12px;
+}
+
+.log-item.active .log-body{
+  display:flex;
 }
 
 .exercise-card{
@@ -130,17 +201,11 @@ body{
   border-left:4px solid #a9d99b;
   padding:12px 16px;
   border-radius:8px;
-
   display:flex;
   justify-content:space-between;
   align-items:center;
-
   color:black;
-
-  transition:transform .2s ease;
 }
-
-
 
 .exercise-name{
   font-weight:600;
@@ -150,120 +215,46 @@ body{
   opacity:.8;
 }
 
-.log-body{
-  display:none;
-
-  padding:22px;
-
-  background:linear-gradient(
-    rgba(20,40,50,.9),
-    rgba(15,30,40,.95)
-  );
-
-  border-top:1px solid rgba(255,255,255,.12);
-
-  color:#e6f4f7;
-
-  font-size:14px;
-  line-height:1.9;
-  letter-spacing:.03em;
-
-  border-radius:0 0 12px 12px;
-
-  box-shadow:
-    inset 0 2px 6px rgba(0,0,0,.35),
-    0 6px 16px rgba(0,0,0,.25);
-
-  white-space:pre-wrap;
-
-  max-height:260px;
-  overflow-y:auto;
-}
-
-.log-item.active .log-body{
-  display:block;
-}
-
-
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.45);
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .2s;
-}
-.overlay.open{
-  opacity:1;
-  pointer-events:auto;
-}
-
-.sidebar{
-  position:fixed;
-  top:0;
-  left:0;
-  height:100vh;
-  width:280px;
-  background:var(--bg-sidebar);
-  color:var(--text-dark);
-  padding:24px 14px;
-  transform:translateX(-110%);
-  transition:transform .22s ease;
-  display:flex;
-  flex-direction:column;
-}
-.sidebar.open{
-  transform:translateX(0);
-}
-
-.nav{ flex:1; display:flex; flex-direction:column; gap:10px; }
-
-.nav button,
-.logout button{
-  border:none;
-  border-radius:10px;
-  padding:12px 14px;
-  background:white;
-  cursor:pointer;
-  font-family:var(--font);
-}
-
-.logout{
-  margin-top:auto;
-}
-
-.logout button{
-  background:#d83a4a;
-}
 </style>
 </head>
 
 <body>
+
 <div class="app">
 
-<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<!-- SIDEBAR -->
 
-<aside class="sidebar" id="sidebar">
-  <nav class="nav">
-    <button onclick="navigateTo('{{ url_for('home') }}')">home</button>
-    <button onclick="navigateTo('{{ url_for('settings') }}')">settings</button>
-    <button onclick="navigateTo('{{ url_for('profile') }}')">profile</button>
-    <button onclick="navigateTo('{{ url_for('workoutLog') }}')">history</button>
-    <button onclick="navigateTo('{{ url_for('shop') }}')">shop</button>
-  </nav>
-  <div class="logout">
-    <button onclick="navigateTo('{{ url_for('logout') }}')">logout</button>
+<aside class="sidebar">
+
+  <div class="sidebar-title">FitCompass</div>
+
+  <div class="nav">
+      <button onclick="location.href='{{ url_for('home') }}'">Home</button>
+      <button onclick="location.href='{{ url_for('profile') }}'">Profile</button>
+      <button onclick="location.href='{{ url_for('history') }}'">History</button>
+      <button onclick="location.href='{{ url_for('library') }}'">Library</button>
+      <button onclick="location.href='{{ url_for('shop') }}'">Shop</button>
   </div>
+
+  <div class="logout">
+      <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
+  </div>
+
 </aside>
 
+<!-- MAIN -->
+
 <main class="main">
-<header class="top-strip">
-  <button class="sidebar-toggle" onclick="openSidebar()">☰</button>
-  <h1>Workout log</h1>
+
+<div class="banner">
+  <strong>Workout Log</strong>
+</div>
+
+<div style="padding:0 22px 10px 22px;">
   <button class="points-pill" disabled>
     Points: {{ points }}
   </button>
-</header>
+</div>
 
 <div class="content">
 <div class="log-list">
@@ -275,6 +266,7 @@ body{
     <div class="log-item">
       <div class="log-header" onclick="toggleWorkout(this)">
         <div class="log-accent"></div>
+
         <div class="log-text">
           {{ first_line }} - Plan {{ loop.index }}
         </div>
@@ -286,24 +278,32 @@ body{
     </div>
 
   {% endfor %}
+
 {% else %}
+
   <div class="log-item">
     <div class="log-header">
       <div class="log-accent"></div>
+
       <div class="log-text">
         No workout history yet.
       </div>
     </div>
   </div>
+
 {% endif %}
 
 </div>
 </div>
+
 </main>
+
 </div>
 
 <script>
+
 function toggleWorkout(element){
+
   const parent = element.parentElement;
   const body = parent.querySelector(".log-body");
 
@@ -319,7 +319,6 @@ function toggleWorkout(element){
   if(body.dataset.parsed) return;
 
   const raw = body.innerText.trim().split("\n");
-
   const exercises = raw.slice(1);
 
   body.innerHTML = exercises.map(line=>{
@@ -338,24 +337,6 @@ function toggleWorkout(element){
   body.dataset.parsed = true;
 }
 
-function openSidebar(){
-  document.getElementById("sidebar").classList.add("open");
-  document.getElementById("overlay").classList.add("open");
-}
-
-function closeSidebar(){
-  document.getElementById("sidebar").classList.remove("open");
-  document.getElementById("overlay").classList.remove("open");
-}
-
-function navigateTo(path){
-  closeSidebar();
-  window.location.href = path;
-}
-
-document.addEventListener("keydown", e=>{
-  if(e.key==="Escape") closeSidebar();
-});
 </script>
 
 </body>

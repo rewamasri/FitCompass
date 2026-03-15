@@ -35,7 +35,6 @@
     .app{ display:flex; min-height:100vh; }
 
 
-    /* Sidebar */
     .sidebar{
       width:260px;
       background:var(--bg-sidebar);
@@ -246,11 +245,11 @@
 
 
     <div class="nav">
+      <button onclick="location.href='{{ url_for('home') }}'">Home</button>
       <button onclick="location.href='{{ url_for('profile') }}'">Profile</button>
       <button onclick="location.href='{{ url_for('history') }}'">History</button>
       <button onclick="location.href='{{ url_for('library') }}'">Library</button>
       <button onclick="location.href='{{ url_for('shop') }}'">Shop</button>
-      <button onclick="location.href='{{ url_for('settings') }}'">Settings</button>
     </div>
 
 
