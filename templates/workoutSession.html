@@ -460,7 +460,6 @@ const gifMap = {
 
 /* ---------------- WORKOUT ROUTINE ---------------- */
 
-//hardcoded durations and reps, someone please change this
 const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
     .map(ex => {
         const normalizedName = ex.name.toLowerCase().replace(/[\s-]/g, "");
@@ -482,6 +481,9 @@ const workoutRoutine = JSON.parse('{{ exercises | tojson | safe }}')
 
 /* ---------------- STATE ---------------- */
 
+let totalTimeElapsed=0;
+let repTimeConsistency=0;
+let currentTimeBetweenReps=0; //generate this number between reps 
 
 let routineIndex = 0;
 let workoutFinished = false;
@@ -503,6 +505,13 @@ const totalReps = workoutRoutine
 
     console.log("Total reps:", totalReps, "Routine:", workoutRoutine);
 
+fetch('/send_total_reps', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ total_reps: totalReps })
+});
 
 const bar = document.getElementById("total-rep-percentage");
 
@@ -545,6 +554,10 @@ function changeExercise(name) {
 }
 
 
+function getTimeBetweenReps(){
+    
+}
+
 /* ---------------- APPLY UI MODE ---------------- */
 
 
@@ -560,13 +573,8 @@ function applyExerciseUIMode(ex) {
     }
 }
 
-
-/* ---------------- TIMER ---------------- */
-
-
+/* ---------------- display timer for running ---------------- */
 function startTimer(seconds) {
-
-
     clearInterval(timerInterval);
     remainingTime = seconds;
 
@@ -594,27 +602,19 @@ function startTimer(seconds) {
     fetch('/reset_stats', { method: 'POST' }).catch(()=>{});
 }
 
-
 /* ---------------- NEXT EXERCISE ---------------- */
-
 
 function normalizeName(name) {
     return name.toLowerCase().replace(/[\s-]/g, "");
 }
 
 
-
-
 function moveToNextExercise() {
 
     exerciseComplete.play();
     clearInterval(timerInterval);
-
-
     fetch('/reset_stats', { method: 'POST' })
         .then(() => {
-
-
             routineIndex++;
 
 
@@ -729,8 +729,7 @@ function updateStats() {
 
 
 function startSession() {
-
-
+    fetch('/start_workout', { method: 'POST' });
     document.getElementById("overlay").style.display = 'none';
 
 
@@ -763,8 +762,6 @@ function startSession() {
 
 
 window.onload = () => {
-
-
     repsCompleted = 0;
     lastCount = 0;
     routineIndex = 0;
