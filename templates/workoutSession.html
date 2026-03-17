@@ -439,7 +439,7 @@
        <script>
 const ding = new Audio("{{ url_for('static', filename='audio/repding.mp3') }}");
 const exerciseComplete = new Audio("{{ url_for('static', filename='audio/exerciseComplete.mp3') }}");
-const HalfWayThere = new Audio("{{ url_for('static', filename='audio/HalfWayThere.mp3') }}");
+const HalfWayThere = new Audio("{{ url_for('static', filename='audio/halfwayThere.mp3') }}");
 
 
 /* ---------------- GIF MAP ---------------- */
@@ -656,8 +656,8 @@ function moveToNextExercise() {
 /* ---------------- UPDATE STATS ---------------- */
 //list of all audios (need to update) - amshu
 const motivationFiles = [
-    'yay1.mp3', 'yay2.mp3',
-    'yay3.mp3', 'yay4.mp3'
+    'greatWork.mp3', 'moreReps.mp3', 'keepPushing.mp3',
+    'almostThere.mp3', 'keepGoing.mp3', 'youGotThis.mp3'
 ];
 
 function getRandomMotivation() {

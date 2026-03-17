@@ -1071,6 +1071,25 @@ def login():
 
     return render_template('login.html')
 
+def send_fit_email(recipient_email, subject, html_content):
+    sender_email = "fitcompass8@gmail.com"
+    sender_password = "pbfp hulf zrvi qumq" # Use Google App Password
+    
+    msg = MIMEMultipart()
+    msg['Subject'] = subject
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    
+    msg.attach(MIMEText(html_content, 'html'))
+    
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Email failed: {e}")
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
 
@@ -1123,6 +1142,13 @@ def register():
 
             conn.commit()
             conn.close()
+            # Prepare Welcome Email
+            welcome_html = f"""
+                <h1>Welcome to Fit Compass, {username}!</h1>
+                <p>We are excited to help you reach your goal: <strong>{goal}</strong>.</p>
+                <p>Your journey starts now. Log in and get moving!</p>
+            """
+            send_fit_email(email, "Welcome to Fit Compass!", welcome_html)
 
             return redirect(url_for('login'))
 
@@ -1130,7 +1156,6 @@ def register():
             conn.close()
             flash("Username or email already exists")
             return redirect(url_for('register'))
-
     return render_template('register.html')
 # -------------------------
 # Home
@@ -1362,10 +1387,11 @@ def workoutcomplete():
     total_reps = loggedInUsers[user_id].exerciseManager.total_reps
 
     conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT coins, current_workout, equipped_outfit
+        SELECT email coins, current_workout, equipped_outfit
         FROM UserLogins
         WHERE username = ?
     """, (session["username"],))
@@ -1373,6 +1399,7 @@ def workoutcomplete():
     user = cursor.fetchone()
 
     if user:
+        user_email = user["email"]
         current_coins = int(user["coins"] or 0)
         current_workout = int(user["current_workout"] or 0)
 
@@ -1389,14 +1416,25 @@ def workoutcomplete():
             session["username"]
         ))
         conn.commit()
+        consistency_snippet = get_formatted_consistency_scores(user_id)
+        report_html = f"""
+            <div style="font-family: sans-serif;">
+                <h2>Workout Summary!</h2>
+                <p><strong>Total Reps:</strong> {total_reps}</p>
+                <p><strong>Duration:</strong> {workout_duration:.1f} seconds</p>
+                <hr>
+                {consistency_snippet}
+            </div>
+        """
+        send_fit_email(user_email, "Your Fit Compass Workout Report", report_html)
         equipped = user["equipped_outfit"] if user["equipped_outfit"] else "business"
     conn.close()
 
-    '''
-    consistency_snippet = get_formatted_consistency_scores(user_id)
+    
+    '''consistency_snippet = get_formatted_consistency_scores(user_id)
     msg = MIMEMultipart()
     msg['Subject'] = "Workout Summary!"
-    msg['From'] =  "doodler4000@gmail.com" #dummy fitcompass email
+    msg['From'] =  "fitcompass8@gmail.com" #dummy fitcompass email
     msg['To'] = "amberlin618@gmail.com" #change this to the email the user provides
     report_html = f"""
         <div class="workout-report">
@@ -1414,8 +1452,8 @@ def workoutcomplete():
     #first argument is email, second is google app password
     #smtp.login('sender email@gmail.com', 'sender app password')
     smtp.sendmail(msg['From'], [msg['To']], msg.as_string())   
-    smtp.quit() 
-    '''
+    smtp.quit()''' 
+    
 
     return render_template("workoutcomplete.html",this_workout_duration= workout_duration,this_total_reps=total_reps )
 

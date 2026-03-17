@@ -183,8 +183,10 @@
   </div>
 
   <script>
+    const completeChimes = new Audio("{{ url_for('static', filename='audio/complete.mp3') }}");
     async function getConsistencyScore() {
     try {
+        completeChimes.play();
         const response =  await fetch('/get_interval_std');
         const stats =  await response.json(); // intervalSTDMap dict
 
