@@ -197,7 +197,7 @@
             if (row && span) {
                 span.innerText = ` ${score}%`;
                 // show the <p>
-                row.style.xdisplay = "block"; 
+                row.style.display = "block"; 
             }
         }
         } catch (error) {
@@ -211,13 +211,7 @@
 
   const arms = document.querySelector(".base-arms img");
 
-// setInterval(() => {
-//     if (arms.src.includes("high arms")) {
-//         arms.src = "/static/michalis/low arms.png";
-//     } else {
-//         arms.src = "/static/michalis/high arms.png";
-//     }
-// }, 400);
+
 
     const confettiContainer = document.querySelector('.confetti');
     const colors = ['#ffd966', '#ff6f61', '#6ec6ff', '#9be37b', '#ffffff'];

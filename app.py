@@ -882,7 +882,7 @@ rep_ranges = {
         "core": "5",
         "lower_body": "6", 
         "upper_body": "3", 
-        "cardio":"7"
+        "cardio":"30"
     }
 }
 
@@ -1295,7 +1295,6 @@ def library():
             "MichalisMode2": [
                 {"name": "squats", "reps": "2"},
                 {"name": "lunges", "reps": "2"},
-                {"name": "running", "reps": "10"},
             ],
             "PresentationDemo": [
                 {"name": "squats", "reps": "4"},
@@ -1391,7 +1390,7 @@ def workoutcomplete():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT email coins, current_workout, equipped_outfit
+        SELECT email, coins, current_workout, equipped_outfit
         FROM UserLogins
         WHERE username = ?
     """, (session["username"],))
@@ -1455,7 +1454,7 @@ def workoutcomplete():
     smtp.quit()''' 
     
 
-    return render_template("workoutcomplete.html",this_workout_duration= workout_duration,this_total_reps=total_reps )
+    return render_template("workoutcomplete.html",this_workout_duration= workout_duration,this_total_reps=total_reps,equipped=equipped )
 
 # -------------------------
 # Placeholder
