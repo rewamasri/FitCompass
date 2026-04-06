@@ -22,8 +22,8 @@ Fit Compass is a workout coach that helps beginners get started with exercise by
 - Alternatively, choose a premade workout from the library page
 
 ## Demo
-presentation slides link
-demo video link 
+* [Presentation Slides](https://docs.google.com/presentation/d/13txgRg7zsfocPBh1YEtlXgIS29KNrTBkIIYYShhb6B8/edit?usp=sharing)
+* [Demo Video](https://drive.google.com/file/d/151bJN9QF8hK1njopicsgvNtfCSkqXeif/view?usp=sharing)
 
 ## Launch prerequisites
 - OpenCV 4.12
