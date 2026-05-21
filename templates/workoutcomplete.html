@@ -177,8 +177,8 @@
       </div>
     </div>
 
-    <a href="{{ url_for('profile') }}">
-      <button class="continue-btn">PROFILE</button>
+    <a href="{{ url_for('home') }}">
+      <button class="continue-btn">HOME</button>
     </a>
   </div>
 
@@ -227,6 +227,36 @@
 
       confettiContainer.appendChild(confetti);
     }
+
+    async function logWorkoutToHistory() {
+      try {
+        let planName = "{{ current_workout_name }}".trim(); 
+        
+        if (!planName || planName === "None" || planName === "") {
+            planName = "MichalisMode1"; //default
+        }
+
+        console.log("Sending logged name payload to database:", planName);
+
+        const response = await fetch('/log_completed_workout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ workout_name: planName }),
+        });
+
+        const result = await response.json();
+        console.log("Save completion status:", result);
+
+      } catch (error) {
+        console.error("Error running history collection script:", error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      logWorkoutToHistory();
+    });
   </script>
 
 </body>

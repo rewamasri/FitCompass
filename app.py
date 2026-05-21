@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from flask_mail import Mail,Message
 import dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,9 +10,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import math
-from flask import jsonify
 import time
-from flask import Response
 import random
 import json
 import time
@@ -1304,6 +1302,7 @@ def library():
         }
         
         if choice in routines:
+            session["active_routine_name"] = str(choice)
             chosen_routine = routines[choice]
         
             names_only = [ex["name"] for ex in chosen_routine]
@@ -1429,32 +1428,14 @@ def workoutcomplete():
         equipped = user["equipped_outfit"] if user["equipped_outfit"] else "business"
     conn.close()
 
+    saved_routine_title = session.get("active_routine_name", "Completed Workout")
+    if saved_routine_title:
+        saved_routine_title = str(saved_routine_title).strip()
     
-    '''consistency_snippet = get_formatted_consistency_scores(user_id)
-    msg = MIMEMultipart()
-    msg['Subject'] = "Workout Summary!"
-    msg['From'] =  "fitcompass8@gmail.com" #dummy fitcompass email
-    msg['To'] = "amberlin618@gmail.com" #change this to the email the user provides
-    report_html = f"""
-        <div class="workout-report">
-            <h2>Workout Summary!</h2>
-            <p><strong>Total Reps:</strong> {total_reps} reps</p>
-            <p><strong>Duration:</strong> {workout_duration:.1f} seconds</p>
-            <h3>Consistency Scores:</h3>
-            {consistency_snippet}
-        </div>
-        """
-    # part = MIMEText(report_html, 'html')
-    # msg.attach(part)
-    # smtp = smtplib.SMTP('smtp.gmail.com', 587)
-    # smtp.starttls()
-    #first argument is email, second is google app password
-    #smtp.login('sender email@gmail.com', 'sender app password')
-    smtp.sendmail(msg['From'], [msg['To']], msg.as_string())   
-    smtp.quit()''' 
-    
+    if not saved_routine_title or "None" in str(saved_routine_title) or "<" in str(saved_routine_title):
+        saved_routine_title = "MichalisMode1"
 
-    return render_template("workoutcomplete.html",this_workout_duration= workout_duration,this_total_reps=total_reps,equipped=equipped )
+    return render_template("workoutcomplete.html",this_workout_duration= workout_duration,this_total_reps=total_reps,equipped=equipped,current_workout_name=saved_routine_title)
 
 # -------------------------
 # Placeholder
@@ -1648,7 +1629,38 @@ def workoutLog():
 
 @app.route('/history')
 def history():
-    return redirect(url_for('workoutLog'))
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
+    # 1. Use your helper function to open the connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    username = session['username']
+    
+    # 2. Query using the username
+    cursor.execute("SELECT history, coins FROM UserLogins WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    
+    history_data = []
+    points = 0
+    
+    # NOTE: If your get_db_connection() uses conn.row_factory = sqlite3.Row, 
+    # you must access columns by name: row['history'] and row['coins'] instead of indexes.
+    if row:
+        try:
+            # Checking if row acts like a dictionary or a tuple fallback
+            hist_col = row['history'] if isinstance(row, sqlite3.Row) else row[0]
+            coin_col = row['coins'] if isinstance(row, sqlite3.Row) else row[1]
+            
+            history_data = json.loads(hist_col) if hist_col else []
+            points = coin_col if coin_col is not None else 0
+        except Exception:
+            history_data = []
+
+    # 3. Always close the connection
+    conn.close()
+
+    return render_template('workoutLog.html', history=history_data, points=points)
 
 
 
@@ -1759,6 +1771,73 @@ def settings():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+@app.route('/log_completed_workout', methods=['POST'])
+def log_completed_workout():
+    print("--> /log_completed_workout endpoint was triggered!")
+    
+    if 'user_id' not in session and 'username' not in session:
+        print("--> ERROR: No valid user found in session.")
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    
+    is_using_uid = 'user_id' in session
+    user_identifier = session['user_id'] if is_using_uid else session['username']
+    
+    data = request.get_json() or {}
+    workout_name = data.get('workout_name', 'Completed Routine').strip()
+    
+    print(f"--> User Identifier: {user_identifier} | Workout Completed: {workout_name}")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if is_using_uid:
+            cursor.execute("SELECT history FROM UserLogins WHERE id = ?", (user_identifier,))
+        else:
+            cursor.execute("SELECT history FROM UserLogins WHERE username = ?", (user_identifier,))
+            
+        row = cursor.fetchone()
+        
+        raw_history = None
+        if row:
+            if hasattr(row, 'keys'): 
+                raw_history = row['history']
+            else:
+                raw_history = row[0]
+
+        print(f"--> Prior Raw History string in DB: {raw_history}")
+
+        if raw_history and raw_history != '[]':
+            try:
+                history_list = json.loads(raw_history)
+            except Exception as parse_err:
+                print(f"--> Parsing failed, resetting history array. Error: {parse_err}")
+                history_list = []
+        else:
+            history_list = []
+            
+        history_list.append(workout_name)
+        updated_history_str = json.dumps(history_list)
+        
+        print(f"--> New History String to save: {updated_history_str}")
+        
+        if is_using_uid:
+            cursor.execute("UPDATE UserLogins SET history = ? WHERE id = ?", (updated_history_str, user_identifier))
+        else:
+            cursor.execute("UPDATE UserLogins SET history = ? WHERE username = ?", (updated_history_str, user_identifier))
+            
+        conn.commit()
+        print("--> DATABASE UPDATE COMPLETE! Change committed successfully.")
+        
+        return jsonify({"status": "success", "total_items": len(history_list)}), 200
+        
+    except Exception as e:
+        print(f"--> CRITICAL WRITE ERROR: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+        
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
