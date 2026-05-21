@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mail import Mail,Message
-import dotenv
+from dotenv import load_dotenv
+load_dotenv()
+from authlib.integrations.flask_client import OAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
@@ -37,8 +39,15 @@ options = vision.PoseLandmarkerOptions(
 detector = vision.PoseLandmarker.create_from_options(options)
 
 app = Flask(__name__)
-app.secret_key = "fitcompass_secret_key"
-
+app.secret_key = os.urandom(24)
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv('GOOGLE_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'}
+)
 
 
 
@@ -980,27 +989,24 @@ def get_user_exercises(username):
 def get_weekly_workouts(username):
     conn = get_db_connection()
     cursor = conn.cursor()
-
     cursor.execute("""
         SELECT goal_other, workouts_per_week
         FROM UserLogins
         WHERE username=?
     """, (username,))
-
     row = cursor.fetchone()
     conn.close()
 
-    if not row:
+    if not row or not row["goal_other"]:
         return {}
 
     workouts = json.loads(row["goal_other"])
     days_per_week = row["workouts_per_week"]
 
     week = {}
-
-    for i in range(1, 8):  # Mon–Sun
+    for i in range(1, 8):
         key = f"day_{i}"
-        week[key] = [{"name":ex[0], "reps":ex[2]} for ex in workouts.get(key, [])] #exercises are stored as "name","category" and then "reps"
+        week[key] = [{"name":ex[0], "reps":ex[2]} for ex in workouts.get(key, [])]
 
     return week
 
@@ -1045,6 +1051,41 @@ def reset_stats():
         "status": "success", 
         "message": f"Counter reset for {currentUser.exerciseManager.currentExercise}"
     })
+
+@app.route('/login/google')
+def google_login():
+    redirect_uri = url_for('google_callback', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@app.route('/login/google/callback')
+def google_callback():
+    token = oauth.google.authorize_access_token()
+    user_info = token['userinfo']
+    email = user_info['email']
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username FROM UserLogins WHERE email=?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        username = email.split('@')[0]
+        cursor.execute("SELECT id FROM UserLogins WHERE username=?", (username,))
+        if cursor.fetchone():
+            username = username + str(random.randint(100, 999))
+        cursor.execute("""
+            INSERT INTO UserLogins (username, email, password, coins, history, current_workout)
+            VALUES (?, ?, ?, 1000, '[]', 0)
+        """, (username, email, generate_password_hash(os.urandom(24).hex())))
+        conn.commit()
+        cursor.execute("SELECT id, username FROM UserLogins WHERE email=?", (email,))
+        user = cursor.fetchone()
+
+    conn.close()
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    loggedInUsers[user['id']] = User(user['id'])
+    return redirect(url_for('home'))
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
