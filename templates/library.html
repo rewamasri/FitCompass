@@ -38,7 +38,7 @@
       flex: 1;
       background: var(--bg-main);
       padding: 0;
-      overflow: hidden;
+      overflow-y: auto;
       min-width: 0;
     }
 
@@ -87,6 +87,8 @@
       margin: 10px 0 16px;
       color: var(--text-light);
     }
+
+    /* Upgraded Workout Card to act as a clickable selector */
     .workout-card {
       display: flex;  
       justify-content: space-between;            
@@ -94,12 +96,18 @@
       background-color: rgba(255, 255, 255, 0.05); 
       border-radius: 8px;        
       padding: 15px 20px;      
-      margin-bottom: 10px;     
+      margin-bottom: 10px; 
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: background-color 0.2s, border 0.2s;
+    }
+
+    .workout-card:hover {
+      background-color: rgba(255, 255, 255, 0.08);
     }
 
     .card-content{
-            display: block;             
-
+      display: block;             
     }
 
     .grid{
@@ -111,7 +119,7 @@
     }
 
     .title {
-      background: #d8eff4; /* Using your variable color */
+      background: #d8eff4; 
       color: #0f1a1f;
       border: none;
       padding: 12px 24px;
@@ -120,6 +128,8 @@
       cursor: pointer;
       font-family: var(--font);
       font-size: 16px;
+      position: relative;
+      z-index: 2;
     }
     .title:hover{ filter: brightness(1.05); }
     .title:active{ transform: translateY(1px); }
@@ -128,7 +138,7 @@
       height: 2px;
       background: var(--divider);
       width: 100%;
-      margin: 10px 0 18px;
+      margin: 30px 0 30px;
     }
 
     /* ---------------- OVERLAY SIDEBAR ---------------- */
@@ -210,22 +220,6 @@
       font-size: 18px;
       box-shadow: 0 8px 18px rgba(0,0,0,.18);
     }
-
-    .title:hover{
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
-
-    }
-
-    @media(max-width: 980px){
-      .grid{ grid-template-columns: repeat(2, minmax(140px, 1fr)); }
-    }
-    @media(max-width: 680px){
-      .top-strip{ height: auto; padding: 18px 18px; }
-      .top-strip h1{ font-size: 28px; }
-      .content{ padding: 18px; }
-      .grid{ grid-template-columns: 1fr; }
-      .sidebar{ width: 85vw; max-width: 320px; }
-    }
   </style>
 </head>
 
@@ -241,7 +235,6 @@
         <button type="button" onclick="navigateTo('{{ url_for('history') }}')">history</button>
         <button type="button" onclick="navigateTo('{{ url_for('library') }}')">library</button>
         <button type="button" onclick="navigateTo('{{ url_for('shop') }}')">shop</button>
-
       </nav>
       <div class="logout">
         <button type="button" onclick="navigateTo('{{ url_for('logout') }}')">logout</button>
@@ -253,101 +246,126 @@
         <button class="sidebar-toggle" type="button" onclick="openSidebar()" aria-label="Open sidebar">☰</button>
         <h1>All Workouts</h1>
       </header>
+      
       <div class="content">
-        <section class="section">
-          <div class="section-title">Beginner</div>
-          <form method="POST" action="{{ url_for('library') }}">
-            <div class="grid">
-              <div class="workout-card">
-                <div class="card-content">
-                  <h3>I Love Push ups</h3>
-                  <ul>
-                    <li>3 x Pushups</li>
-                    <li>45 second run</li>
-                    <li>3 x Pushups</li>
-                    <li>45 second run</li>
-                    <li>3 x Pushups</li>
-                    <li>45 second run</li>
-                    <li>3 x Pushups</li>
-                  </ul>
-                </div>
-                  <button class="title" type="submit" name="routines" value="I_Love_Pushups">Start</button>  
-
-              </div>   
-              <div class="workout-card">
-                    <div class="card-content">
-                        <h3>Cardio Cardio Cardio!</h3>
-                        <ul>
-                          <li>45 second jog</li>
-                          <li>45 second jumping jacks</li>
-                          <li>3 x lunges</li>
-                          <li>45 second jog</li>
-                          <li>45 second jumping jacks</li>
-                          <li>3 x lunges</li>
-                        </ul>
-                    </div>   
-                  <button class="title" type="submit" name="routines" value="cardio_cardio_cardio">Start</button> 
-              </div>     
-              <div class="workout-card">
-                    <div class="card-content">
-                        <h3>Leg day</h3>
-                        <ul>
-                          <li>3 x squats</li>
-                          <li>3 x lunges</li>
-                          <li>3 x glute bridges</li>
-                          <li>45 second jog</li>
-                          <li>3 x squats</li>
-                          <li>3 x lunges</li>
-                          <li>3 x glute bridges</li>
-                        </ul>
-                    </div>   
-                  <button class="title" type="submit" name="routines" value="Legs_Are_Great">Start</button> 
-              </div>   
+        <form method="POST" action="{{ url_for('library') }}">
+          
+          <section class="section">
+            <div class="section-title">Beginner</div>
+              <div class="grid">
+                
+                <div class="workout-card" id="card-I_Love_Pushups" onclick="selectRoutine('I_Love_Pushups', 'I Love Push ups')">
+                  <div class="card-content">
+                    <h3>I Love Push ups</h3>
+                    <ul>
+                      <li>3 x Pushups</li>
+                      <li>45 second run</li>
+                      <li>3 x Pushups</li>
+                      <li>45 second run</li>
+                      <li>3 x Pushups</li>
+                      <li>45 second run</li>
+                      <li>3 x Pushups</li>
+                    </ul>
+                  </div>
+                  <button class="title" type="submit" name="routines" value="I_Love_Pushups" onclick="event.stopPropagation()">Start</button>  
+                </div>   
+                
+                <div class="workout-card" id="card-cardio_cardio_cardio" onclick="selectRoutine('cardio_cardio_cardio', 'Cardio Cardio Cardio!')">
+                  <div class="card-content">
+                      <h3>Cardio Cardio Cardio!</h3>
+                      <ul>
+                        <li>45 second jog</li>
+                        <li>45 second jumping jacks</li>
+                        <li>3 x lunges</li>
+                        <li>45 second jog</li>
+                        <li>45 second jumping jacks</li>
+                        <li>3 x lunges</li>
+                      </ul>
+                  </div>   
+                  <button class="title" type="submit" name="routines" value="cardio_cardio_cardio" onclick="event.stopPropagation()">Start</button> 
+                </div>     
+                
+                <div class="workout-card" id="card-Legs_Are_Great" onclick="selectRoutine('Legs_Are_Great', 'Leg day')">
+                  <div class="card-content">
+                      <h3>Leg day</h3>
+                      <ul>
+                        <li>3 x squats</li>
+                        <li>3 x lunges</li>
+                        <li>3 x glute bridges</li>
+                        <li>45 second jog</li>
+                        <li>3 x squats</li>
+                        <li>3 x lunges</li>
+                        <li>3 x glute bridges</li>
+                      </ul>
+                  </div>   
+                  <button class="title" type="submit" name="routines" value="Legs_Are_Great" onclick="event.stopPropagation()">Start</button> 
+                </div>   
+              </div>
           </section>
-                <div class="divider"></div>
-      <section class="section">
-          <div class="section-title">Intermediate</div>
-         <div class="grid">
-       
-          <div class="workout-card">
 
-                    <div class="card-content">
-                        <h3>Michalis Mode 1</h3>
-                        <ul>
-                          <li>1 x squats</li>
-                          <li>1 x lunges</li>
-                        </ul>
-                    </div>   
-                  <button class="title" type="submit" name="routines" value="MichalisMode1">Start</button> 
-            </div>
-             <div class="workout-card">
-                    <div class="card-content">
-                        <h3>Michalis Mode 2</h3>
-                        <ul>
-                          <li>2 x squats</li>
-                          <li>2 x lunges</li>
-                        </ul>
-                    </div>   
-                  <button class="title" type="submit" name="routines" value="MichalisMode2">Start</button> 
+          <section class="section">
+            <div class="section-title">Intermediate</div>
+            <div class="grid">
+        
+              <div class="workout-card" id="card-MichalisMode1" onclick="selectRoutine('MichalisMode1', 'Michalis Mode 1')">
+                <div class="card-content">
+                    <h3>Michalis Mode 1</h3>
+                    <ul>
+                      <li>1 x squats</li>
+                      <li>1 x lunges</li>
+                    </ul>
+                </div>   
+                <button class="title" type="submit" name="routines" value="MichalisMode1" onclick="event.stopPropagation()">Start</button> 
+              </div>
+              
+              <div class="workout-card" id="card-MichalisMode2" onclick="selectRoutine('MichalisMode2', 'Michalis Mode 2')">
+                <div class="card-content">
+                    <h3>Michalis Mode 2</h3>
+                    <ul>
+                      <li>2 x squats</li>
+                      <li>2 x lunges</li>
+                    </ul>
+                </div>   
+                <button class="title" type="submit" name="routines" value="MichalisMode2" onclick="event.stopPropagation()">Start</button> 
               </div>   
-             <div class="workout-card">
-                    <div class="card-content">
-                        <h3>Presentation Demo</h3>
-                        <ul>
-                          <li>4 x squats</li>   
-                          <li>6 x situps</li> 
-                          <li>4 x lunges</li>
-                        </ul>
-                    </div>   
-                  <button class="title" type="submit" name="routines" value="PresentationDemo">Start</button> 
+              
+              <div class="workout-card" id="card-PresentationDemo" onclick="selectRoutine('PresentationDemo', 'Presentation Demo')">
+                <div class="card-content">
+                    <h3>Presentation Demo</h3>
+                    <ul>
+                      <li>4 x squats</li>   
+                      <li>6 x situps</li> 
+                      <li>4 x lunges</li>
+                    </ul>
+                </div>   
+                <button class="title" type="submit" name="routines" value="PresentationDemo" onclick="event.stopPropagation()">Start</button> 
               </div>        
 
+            </div>
+          </section>
+        </form>
+        
+        <div class="divider"></div>
+
+        <section class="section">
+          <div class="section-title" id="activeRoutineTitle">I Love Push ups - Community Discussion</div>
+          
+          <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; margin-top: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <textarea id="commentInput" placeholder="Leave a review, tip, or question about this routine..." style="width: 100%; height: 60px; padding: 10px; border-radius: 8px; border: none; font-family: var(--font); resize: none;"></textarea>
+                  <button type="button" onclick="submitComment()" style="background: #a9d99b; color: black; border: none; padding: 10px 20px; border-radius: 8px; font-family: var(--font); cursor: pointer; font-weight: bold; align-self: flex-start;">Post Comment</button>
+              </div>
+              
+              <div id="commentsList" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+        </section>
+
       </div>
-      
     </main>
   </div>
 
   <script>
+    // --- SIDEBAR LOGIC ---
     function openSidebar() {
       document.getElementById("sidebar").classList.add("open");
       document.getElementById("overlay").classList.add("open");
@@ -366,6 +384,90 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeSidebar();
     });
+
+    // --- COMMENTS & ROUTINE SELECTION LOGIC ---
+    let currentRoutineId = "I_Love_Pushups";
+
+    // Load the first routine's comments automatically when the page opens
+    document.addEventListener("DOMContentLoaded", () => {
+        selectRoutine("I_Love_Pushups", "I Love Push ups");
+    });
+
+    // Highlights the card and switches the database query
+    function selectRoutine(id, title) {
+        currentRoutineId = id;
+        document.getElementById("activeRoutineTitle").innerText = title + " - Community Discussion";
+        
+        // 1. Remove highlight from all cards
+        document.querySelectorAll('.workout-card').forEach(card => {
+            card.style.border = "2px solid transparent";
+            card.style.background = "rgba(255, 255, 255, 0.05)";
+        });
+        
+        // 2. Add green highlight to the active card
+        const activeCard = document.getElementById("card-" + id);
+        if (activeCard) {
+            activeCard.style.border = "2px solid #a9d99b";
+            activeCard.style.background = "rgba(255, 255, 255, 0.1)";
+        }
+
+        // 3. Fetch the correct comments from MongoDB
+        loadComments(currentRoutineId);
+    }
+
+    async function loadComments(routineId) {
+        try {
+            const response = await fetch(`/get_comments/${routineId}`);
+            const comments = await response.json();
+            
+            const listDiv = document.getElementById("commentsList");
+            listDiv.innerHTML = ""; 
+            
+            if (comments.length === 0) {
+                listDiv.innerHTML = `<p style="color: #bbb; font-style: italic;">No comments yet. Be the first to share your thoughts on this routine!</p>`;
+                return;
+            }
+
+            comments.forEach(c => {
+                listDiv.innerHTML += `
+                    <div style="background: rgba(255, 255, 255, 0.9); color: black; padding: 12px; border-radius: 8px; margin-top: 10px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+                            <strong>@${c.username}</strong>
+                            <small style="color: #666;">${c.timestamp}</small>
+                        </div>
+                        <p style="margin: 0; line-height: 1.4;">${c.text}</p>
+                    </div>
+                `;
+            });
+        } catch (error) {
+            console.error("Error loading comments:", error);
+        }
+    }
+
+    async function submitComment() {
+        const inputElement = document.getElementById("commentInput");
+        const commentText = inputElement.value;
+        
+        if (commentText.trim() === "") return;
+
+        try {
+            const response = await fetch('/add_comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ video_id: currentRoutineId, text: commentText })
+            });
+
+            if (response.ok) {
+                inputElement.value = ""; 
+                loadComments(currentRoutineId); // Instantly display the new comment
+            } else {
+                alert("Could not post comment. Please ensure you are logged into your account.");
+            }
+        } catch (error) {
+            console.error("Error submitting comment:", error);
+            alert("Error communicating with server.");
+        }
+    }
   </script>
 </body>
 </html>
