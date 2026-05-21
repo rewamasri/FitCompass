@@ -18,6 +18,18 @@ import json
 import time
 from pprint import pprint
 
+import os
+from dotenv import load_dotenv
+from pymongo import MongoClient
+from datetime import datetime
+
+load_dotenv()
+mongo_uri = os.getenv("MONGO_URI")
+mongo_client = MongoClient(mongo_uri)
+mongo_db = mongo_client["FitCompassDB"]
+comments_collection = mongo_db["comments"]
+reviews_collection = mongo_db["workout_reviews"]
+
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.application import MIMEApplication
@@ -1760,6 +1772,61 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/add_comment', methods=['POST'])
+def add_comment():
+    if "username" not in session:
+        return jsonify({"error": "You must be logged in to comment"}), 401
+
+    data = request.get_json()
+    video_id = data.get("video_id")
+    text = data.get("text")
+    
+    if not text or text.strip() == "":
+        return jsonify({"error": "Comment cannot be empty"}), 400
+
+    new_comment = {
+        "video_id": video_id,
+        "username": session["username"],
+        "text": text,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    comments_collection.insert_one(new_comment)
+    
+    return jsonify({"status": "success", "message": "Comment added!"}), 200
+
+@app.route('/get_comments/<video_id>', methods=['GET'])
+def get_comments(video_id):
+    comments = list(comments_collection.find(
+        {"video_id": video_id}, 
+        {"_id": 0} 
+    ).sort("timestamp", -1))
+    
+    return jsonify(comments)
+
+@app.route('/submit_review', methods=['POST'])
+def submit_review():
+    if "username" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    workout_id = data.get("workout_id")
+    rating = data.get("rating")
+    comment = data.get("comment", "")
+
+    if not workout_id or not rating or not (1 <= int(rating) <= 5):
+        return jsonify({"error": "Invalid rating or workout data"}), 400
+
+    review_document = {
+        "username": session["username"],
+        "workout_id": workout_id,
+        "rating": int(rating),
+        "comment": comment,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    reviews_collection.insert_one(review_document)
+
+    return jsonify({"status": "success", "message": "Review submitted successfully!"}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
