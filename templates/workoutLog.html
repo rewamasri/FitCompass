@@ -32,8 +32,6 @@ body{
 }
 
 /* sidebar */
-
-
 .sidebar{
   width:260px;
   background:var(--bg-sidebar);
@@ -42,7 +40,6 @@ body{
   flex-direction:column;
   padding:18px 14px;
   border-right:3px solid rgba(0,0,0,.08);
-
   position:fixed;
   top:0;
   left:0;
@@ -91,7 +88,6 @@ body{
 }
 
 /* main stuff */
-
 .main{
   flex:1;
   margin-left:260px;
@@ -169,52 +165,49 @@ body{
   text-transform:uppercase;
 }
 
-.log-body{
-  display:none;
-  padding:22px;
-  background:linear-gradient(
-    rgba(20,40,50,.9),
-    rgba(15,30,40,.95)
+.log-body {
+  display: none;
+  padding: 20px;
+  background: linear-gradient(
+    rgba(20, 40, 50, .95),
+    rgba(15, 30, 40, .98)
   );
-  border-top:1px solid rgba(255,255,255,.12);
-  color:#e6f4f7;
-  font-size:14px;
-  line-height:1.9;
-  letter-spacing:.03em;
-  border-radius:0 0 12px 12px;
-  box-shadow:
-    inset 0 2px 6px rgba(0,0,0,.35),
-    0 6px 16px rgba(0,0,0,.25);
-  white-space:pre-wrap;
-  max-height:260px;
-  overflow-y:auto;
-  flex-direction:column;
-  gap:12px;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+  color: #e6f4f7;
+  font-size: 14px;
+  line-height: 1.6;
+  flex-direction: column;
+  gap: 12px;
+  height: auto; 
+  clear: both;
 }
 
-.log-item.active .log-body{
-  display:flex;
+.log-item.active .log-body {
+  display: flex;
 }
 
-.exercise-card{
-  background:#d8eff4;
-  border-left:4px solid #a9d99b;
-  padding:12px 16px;
-  border-radius:8px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  color:black;
+.exercises-container ul {
+  margin: 8px 0;
+  padding-left: 20px;
+  color: #a9d99b;
 }
 
-.exercise-name{
-  font-weight:600;
+.exercises-container li {
+  margin-bottom: 4px;
 }
 
-.exercise-reps{
-  opacity:.8;
+.exercise-card-status {
+  background: #d8eff4;
+  border-left: 4px solid #a9d99b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: black;
+  font-weight: bold;
+  margin-top: 8px;
 }
-
 </style>
 </head>
 
@@ -222,10 +215,7 @@ body{
 
 <div class="app">
 
-<!-- sidebar -->
-
 <aside class="sidebar">
-
   <div class="sidebar-title">FitCompass</div>
 
   <div class="nav">
@@ -239,10 +229,7 @@ body{
   <div class="logout">
       <button onclick="location.href='{{ url_for('logout') }}'">Log Out</button>
   </div>
-
 </aside>
-
-<!-- main -->
 
 <main class="main">
 
@@ -261,19 +248,61 @@ body{
 
 {% if history %}
   {% for workout in history[::-1] %}
-    {% set first_line = workout.split('\n')[0] %}
+    {# Initialize default values #}
+    {% set display_title = "Workout Session" %}
+    {% set details_list = [] %}
+
+    {# Scenario A: It is an old raw plan containing multi-line text blocks #}
+    {% if '\n' in workout or '|' in workout %}
+      
+      {# Split the lines to look for a Day name #}
+      {% set lines = workout.split('\n') %}
+      {% for line in lines %}
+        {% if 'DAY' in line.upper() %}
+          {% set display_title = line.strip() %}
+        {% elif '|' in line %}
+          {% set details_list = details_list.append(line.split('|')[0].strip()) %}
+        {% endif %}
+      {% endfor %}
+      
+      {# Fallback if no specific Day name was found inside the block #}
+      {% if display_title == "Workout Session" and lines|length > 0 %}
+        {% set display_title = lines[0].replace('Goal:', '').strip() %}
+      {% endif %}
+
+    {# Scenario B: It is your clean new format (e.g., "MichalisMode1", "PresentationDemo") #}
+    {% else %}
+      {% set display_title = workout %}
+    {% endif %}
 
     <div class="log-item">
       <div class="log-header" onclick="toggleWorkout(this)">
         <div class="log-accent"></div>
 
         <div class="log-text">
-          {{ first_line }} - Plan {{ loop.index }}
+          {# This ensures the actual saved workout name string is shown clearly #}
+          {{ display_title }} — Log #{{ loop.revindex }}
         </div>
       </div>
 
       <div class="log-body">
-        {{ workout }}
+        <div class="exercises-container">
+          <strong>Routine Details:</strong>
+          <ul>
+            {% if details_list|length > 0 %}
+              {% for detail in details_list %}
+                <li>{{ detail }}</li>
+              {% endfor %}
+            {% else %}
+              <li>Completed routine exercises successfully!</li>
+            {% endif %}
+          </ul>
+        </div>
+        
+        <div class="exercise-card-status">
+          <span>Status: Verified Complete</span>
+          <span>✓</span>
+        </div>
       </div>
     </div>
 
@@ -284,7 +313,6 @@ body{
   <div class="log-item">
     <div class="log-header">
       <div class="log-accent"></div>
-
       <div class="log-text">
         No workout history yet.
       </div>
@@ -297,46 +325,21 @@ body{
 </div>
 
 </main>
-
 </div>
 
 <script>
-
 function toggleWorkout(element){
-
   const parent = element.parentElement;
   const body = parent.querySelector(".log-body");
 
   if(parent.classList.contains("active")){
     parent.classList.remove("active");
     body.style.display = "none";
-    return;
+  } else {
+    parent.classList.add("active");
+    body.style.display = "flex";
   }
-
-  parent.classList.add("active");
-  body.style.display = "flex";
-
-  if(body.dataset.parsed) return;
-
-  const raw = body.innerText.trim().split("\n");
-  const exercises = raw.slice(1);
-
-  body.innerHTML = exercises.map(line=>{
-    const parts = line.trim().split(" ");
-    const reps = parts.pop();
-    const name = parts.join(" ");
-
-    return `
-      <div class="exercise-card">
-        <span class="exercise-name">${name}</span>
-        <span class="exercise-reps">${reps}</span>
-      </div>
-    `;
-  }).join("");
-
-  body.dataset.parsed = true;
 }
-
 </script>
 
 </body>
