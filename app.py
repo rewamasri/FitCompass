@@ -20,9 +20,17 @@ from pprint import pprint
 
 import os
 from dotenv import load_dotenv
-from pymongo import MongoClient
+from db import (
+    users_collection,
+    comments_collection,
+    reviews_collection,
+    next_user_id,
+    ensure_indexes,
+    DuplicateKeyError,
+)
 from datetime import datetime
 
+ensure_indexes()
 load_dotenv()
 mongo_uri = os.getenv("MONGO_URI")
 mongo_client = MongoClient(mongo_uri)
@@ -64,53 +72,6 @@ google = oauth.register(
 
 
 currentDirectory = os.path.dirname(os.path.abspath(__file__))
-
-db_path = os.path.join(currentDirectory, "UserLogins.db")
-
-def get_db_connection():
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-# Create tables
-connection = get_db_connection()
-cursor = connection.cursor()
-
-# Drop old table if it exists (WARNING: deletes old user data!) Only do when adding columns to the table and want total reset
-# cursor.execute("DROP TABLE IF EXISTS UserLogins")
-# cursor.execute("DROP TABLE IF EXISTS UserOutfits")
-
-# first table
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS UserLogins(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    goal TEXT,
-    goal_other TEXT,
-    workouts_per_week INTEGER,
-    body_part TEXT,
-    coins INTEGER DEFAULT 1000,
-    history TEXT DEFAULT '[]',
-    current_workout INTEGER,
-    equipped_outfit TEXT,
-    workout_plan TEXT
-)
-""")
-
-#second table
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS UserOutfits(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    outfit_name TEXT,
-    FOREIGN KEY(user_id) REFERENCES UserLogins(id)
-)
-""")
-
-connection.commit()
-connection.close()
 
 # Webcam setup
 camera = cv2.VideoCapture(0)
@@ -980,60 +941,38 @@ def generate_workout_plan(goal, days_per_week, body_part):
 
 
 def get_user_exercises(username):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT goal_other, workouts_per_week
-        FROM UserLogins
-        WHERE username = ?
-    """, (username,))
-
-    row = cursor.fetchone()
-    conn.close()
-
+    row = users_collection.find_one({"username": username})
     if not row:
         return [], 0
 
-    exercises = json.loads(row["goal_other"])
+    raw = row.get("goal_other")
+    exercises = json.loads(raw) if raw else []
 
-    return exercises, row["workouts_per_week"]
+    return exercises, row.get("workouts_per_week") or 1
 
 def get_weekly_workouts(username):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT goal_other, workouts_per_week
-        FROM UserLogins
-        WHERE username=?
-    """, (username,))
-    row = cursor.fetchone()
-    conn.close()
+    row = users_collection.find_one({"username": username})
 
-    if not row or not row["goal_other"]:
+    if not row or not row.get("goal_other"):
         return {}
 
     workouts = json.loads(row["goal_other"])
-    days_per_week = row["workouts_per_week"]
+    days_per_week = row.get("workouts_per_week") or 1
 
     week = {}
     for i in range(1, 8):
         key = f"day_{i}"
-        week[key] = [{"name":ex[0], "reps":ex[2]} for ex in workouts.get(key, [])]
+        week[key] = [{"name": ex[0], "reps": ex[2]} for ex in workouts.get(key, [])]
 
     return week
 
 def get_today_exercises(username, day_number=1):
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT goal_other FROM UserLogins WHERE username=?", (username,))
-    row = cursor.fetchone()
-    conn.close()
+    row = users_collection.find_one({"username": username})
 
     if not row:
         return []
-
-    workouts = json.loads(row["goal_other"])
+    raw = row.get("goal_other")
+    workouts = json.loads(raw) if raw else {}
     day_key = f"day_{day_number}"
 
     if day_key not in workouts:
@@ -1075,25 +1014,24 @@ def google_callback():
     user_info = token['userinfo']
     email = user_info['email']
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username FROM UserLogins WHERE email=?", (email,))
-    user = cursor.fetchone()
-
+    user = users_collection.find_one({"email": email}, {"id": 1, "username": 1})
     if not user:
         username = email.split('@')[0]
-        cursor.execute("SELECT id FROM UserLogins WHERE username=?", (username,))
-        if cursor.fetchone():
+        if users_collection.find_one({"username": username}):
             username = username + str(random.randint(100, 999))
-        cursor.execute("""
-            INSERT INTO UserLogins (username, email, password, coins, history, current_workout)
-            VALUES (?, ?, ?, 1000, '[]', 0)
-        """, (username, email, generate_password_hash(os.urandom(24).hex())))
-        conn.commit()
-        cursor.execute("SELECT id, username FROM UserLogins WHERE email=?", (email,))
-        user = cursor.fetchone()
+        new_id = next_user_id()
+        users_collection.insert_one({
+            "id": new_id,
+            "username": username,
+            "email": email,
+            "password": generate_password_hash(os.urandom(24).hex()),
+            "coins": 1000,
+            "history": "[]",
+            "current_workout": 0,
+            "owned_outfits": [],
+        })
+        user = {"id": new_id, "username": username}
 
-    conn.close()
     session['user_id'] = user['id']
     session['username'] = user['username']
     loggedInUsers[user['id']] = User(user['id'])
@@ -1111,11 +1049,7 @@ def login():
             session['is_admin'] = True
             return redirect(url_for('admin_dashboard'))
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, password FROM UserLogins WHERE username=?", (username,))
-        user = cursor.fetchone()
-        conn.close()
+        user = users_collection.find_one({"username": username}, {"id": 1, "password": 1})
         if user and check_password_hash(user["password"], raw_password):
             session['user_id'] = user["id"]
             session['username'] = username
@@ -1160,42 +1094,27 @@ def register():
         body_part = request.form.get('body_part')
 
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-
-            
             workout_plan = generate_workout_plan(goal, workouts_per_week, body_part)
-
-          
             current_workout = 0
-
             if 'all_selected_exercises' in globals():
                 goal_other = json.dumps(all_selected_exercises)
-
-           
             history = json.dumps([workout_plan])
 
-            cursor.execute("""
-                INSERT INTO UserLogins
-                (username, email, password, goal, goal_other, workouts_per_week,
-                 body_part, workout_plan, history, current_workout,coins)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
-            """, (
-                username,
-                email,
-                password,
-                goal,
-                goal_other,
-                workouts_per_week,
-                body_part,
-                workout_plan,
-                history,
-                current_workout,
-                coins
-            ))
-
-            conn.commit()
-            conn.close()
+            users_collection.insert_one({
+                "id": next_user_id(),
+                "username": username,
+                "email": email,
+                "password": password,
+                "goal": goal,
+                "goal_other": goal_other,
+                "workouts_per_week": workouts_per_week,
+                "body_part": body_part,
+                "workout_plan": workout_plan,
+                "history": history,
+                "current_workout": current_workout,
+                "coins": coins,
+                "owned_outfits": [],
+            })
             # Prepare Welcome Email
             welcome_html = f"""
                 <h1>Welcome to Fit Compass, {username}!</h1>
@@ -1205,9 +1124,7 @@ def register():
             send_fit_email(email, "Welcome to Fit Compass!", welcome_html)
 
             return redirect(url_for('login'))
-
-        except sqlite3.IntegrityError:
-            conn.close()
+        except DuplicateKeyError:
             flash("Username or email already exists")
             return redirect(url_for('register'))
     return render_template('register.html')
@@ -1222,35 +1139,26 @@ def home():
 
     username = session["username"]
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT coins, current_workout, workouts_per_week ,equipped_outfit
-        FROM UserLogins
-        WHERE username = ?
-    """, (username,))
-
-    row = cursor.fetchone()
-    conn.close()
+    row = users_collection.find_one({"username": session["username"]})
 
     if row:
-        coins = int(row["coins"] or 0)
-        current_workout = int(row["current_workout"] or 0)
-        workouts_per_week = int(row["workouts_per_week"] or 1)
+        coins = int(row.get("coins") or 0)
+        current_workout = int(row.get("current_workout") or 0)
+        try:
+            workouts_per_week = int(row.get("workouts_per_week"))
+        except (TypeError, ValueError):
+            workouts_per_week = 1
     else:
         coins = 0
         current_workout = 0
         workouts_per_week = 1
 
-   
     if workouts_per_week > 0:
         goal_percent = int((current_workout / workouts_per_week) * 100)
     else:
         goal_percent = 0
 
-
-    equipped = row["equipped_outfit"] if row and row["equipped_outfit"] else "Business"
+    equipped = row.get("equipped_outfit") or "Business" if row else "Business"
     weekly_workouts = get_weekly_workouts(username)
 
     return render_template(
@@ -1261,7 +1169,6 @@ def home():
         points=coins,
         equipped=equipped
     )
-
 @app.route('/set_day', methods=['POST'])
 def set_day():
     session['selected_day'] = request.get_json()['day']
@@ -1294,16 +1201,10 @@ def workoutSession():
 
     loggedInUsers[user_id].exerciseManager = ExerciseManager(names)
 
-    # loggedInUsers[user_id].exerciseManager.workout_begin_time=time.time()
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT equipped_outfit FROM UserLogins WHERE id=?", (user_id,))
-    user = cursor.fetchone()
-    conn.close()
+    user = users_collection.find_one({"id": user_id}, {"equipped_outfit": 1})
 
     return render_template("workoutSession.html", exercises=today_exercises,
-            equipped=user["equipped_outfit"] if user["equipped_outfit"] else "")
+            equipped=(user.get("equipped_outfit") if user else "") or "")
 
 @app.route('/library', methods=['GET','POST'])
 def library():
@@ -1439,37 +1340,19 @@ def workoutcomplete():
     intervalsMap=loggedInUsers[user_id].exerciseManager.allExerciseIntervals
 
     total_reps = loggedInUsers[user_id].exerciseManager.total_reps
-
-    conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT email, coins, current_workout, equipped_outfit
-        FROM UserLogins
-        WHERE username = ?
-    """, (session["username"],))
-
-    user = cursor.fetchone()
-
+    equipped = "business"
+    user = users_collection.find_one({"username": session["username"]})
     if user:
         user_email = user["email"]
         current_coins = int(user["coins"] or 0)
         current_workout = int(user["current_workout"] or 0)
-
         new_coins = current_coins + 150
         new_current_workout = current_workout + 1
 
-        cursor.execute("""
-            UPDATE UserLogins
-            SET coins = ?, current_workout = ?
-            WHERE username = ?
-        """, (
-            new_coins,
-            new_current_workout,
-            session["username"]
-        ))
-        conn.commit()
+        users_collection.update_one(
+            {"username": session["username"]},
+            {"$set": {"coins": new_coins, "current_workout": new_current_workout}},
+        )
         consistency_snippet = get_formatted_consistency_scores(user_id)
         report_html = f"""
             <div style="font-family: sans-serif;">
@@ -1481,8 +1364,7 @@ def workoutcomplete():
             </div>
         """
         send_fit_email(user_email, "Your Fit Compass Workout Report", report_html)
-        equipped = user["equipped_outfit"] if user["equipped_outfit"] else "business"
-    conn.close()
+        equipped = user.get("equipped_outfit") or "business"
 
     saved_routine_title = session.get("active_routine_name", "Completed Workout")
     if saved_routine_title:
@@ -1501,27 +1383,13 @@ def profile():
     if "username" not in session:
         return redirect(url_for("login"))
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT username, email, goal,
-               workouts_per_week,
-               coins,
-               current_workout,
-               equipped_outfit
-        FROM UserLogins
-        WHERE username = ?
-    """, (session["username"],))
-
-    user = cursor.fetchone()
-    conn.close()
+    user = users_collection.find_one({"username": session["username"]})
 
     if not user:
         return redirect(url_for("login"))
 
-    workouts_per_week = int(user["workouts_per_week"] or 1)
-    current_workout = int(user["current_workout"] or 0)
+    workouts_per_week = int(user.get("workouts_per_week") or 1)
+    current_workout = int(user.get("current_workout") or 0)
 
     if workouts_per_week > 0:
         goal_percent = int((current_workout / workouts_per_week) * 100)
@@ -1531,15 +1399,15 @@ def profile():
     if goal_percent >= 100:
         goal_percent = 100
 
-    equipped = user["equipped_outfit"] if user and user["equipped_outfit"] else "Business"
+    equipped = user.get("equipped_outfit") or "Business"
 
     return render_template(
         "profile.html",
         username=user["username"],
         email=user["email"],
-        goal=user["goal"],
+        goal=user.get("goal") or "",
         workouts_per_week=workouts_per_week,
-        points=int(user["coins"] or 0),
+        points=int(user.get("coins") or 0),
         goal_percent=goal_percent,
         equipped=equipped
     )
@@ -1549,9 +1417,6 @@ def profileEdit():
 
     if "username" not in session:
         return redirect(url_for("login"))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
 
     if request.method == "POST":
 
@@ -1568,26 +1433,25 @@ def profileEdit():
         else:
             goal_other = None
 
-        cursor.execute(
-            "SELECT email, history FROM UserLogins WHERE username = ?",
-            (session["username"],)
+        row = users_collection.find_one(
+            {"username": session["username"]},
+            {"email": 1, "history": 1}
         )
-        row = cursor.fetchone()
+        if not row:
+            return redirect(url_for("login"))
 
         old_email = row["email"]
 
-        cursor.execute(
-            "SELECT username FROM UserLogins WHERE email = ? AND username != ?",
-            (new_email, session["username"])
+        existing_user = users_collection.find_one(
+            {"email": new_email, "username": {"$ne": session["username"]}}
         )
-        existing_user = cursor.fetchone()
 
         if existing_user:
             email_to_save = old_email
         else:
             email_to_save = new_email
 
-        if row and row["history"]:
+        if row.get("history"):
             history = json.loads(row["history"])
         else:
             history = []
@@ -1595,31 +1459,19 @@ def profileEdit():
         history.append(workout_plan)
         updated_history = json.dumps(history)
 
-        cursor.execute("""
-            UPDATE UserLogins
-            SET email = ?, 
-                goal = ?, 
-                workouts_per_week = ?, 
-                body_part = ?, 
-                workout_plan = ?,
-                history = ?,
-                goal_other = ?,
-                current_workout =?
-            WHERE username = ?
-        """, (
-            email_to_save,
-            goal,
-            workouts_per_week,
-            body_part,
-            workout_plan,
-            updated_history,
-            goal_other,
-            current_workout,
-            session["username"]
-        ))
-
-        conn.commit()
-        conn.close()
+        users_collection.update_one(
+            {"username": session["username"]},
+            {"$set": {
+                "email": email_to_save,
+                "goal": goal,
+                "workouts_per_week": workouts_per_week,
+                "body_part": body_part,
+                "workout_plan": workout_plan,
+                "history": updated_history,
+                "goal_other": goal_other,
+                "current_workout": current_workout,
+            }}
+        )
 
         if existing_user:
             flash("Email already exists. Kept your old email. Profile updated!")
@@ -1628,27 +1480,22 @@ def profileEdit():
 
         return redirect(url_for("profile"))
 
-    cursor.execute("""
-        SELECT email, goal, goal_other,
-               workouts_per_week, 
-               body_part, workout_plan
-        FROM UserLogins
-        WHERE username = ?
-    """, (session["username"],))
-
-    user = cursor.fetchone()
-    conn.close()
+    user = users_collection.find_one(
+        {"username": session["username"]},
+        {"email": 1, "goal": 1, "goal_other": 1,
+         "workouts_per_week": 1, "body_part": 1, "workout_plan": 1}
+    )
+    if not user:
+        return redirect(url_for("login"))
 
     return render_template(
         "profileEdit.html",
         email=user["email"],
-        goal=user["goal"],
-        goal_other=user["goal_other"],
-        workouts_per_week=user["workouts_per_week"],
-        body_part=user["body_part"]
+        goal=user.get("goal") or "",
+        goal_other=user.get("goal_other") or "",
+        workouts_per_week=user.get("workouts_per_week") or 1,
+        body_part=user.get("body_part") or ""
     )
-
-
 
 
 @app.route("/workoutLog")
@@ -1656,23 +1503,13 @@ def workoutLog():
     if "username" not in session:
         return redirect(url_for("login"))
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT coins, history
-        FROM UserLogins
-        WHERE username = ?
-    """, (session["username"],))
-
-    user = cursor.fetchone()
-    conn.close()
+    user = users_collection.find_one({"username": session["username"]}, {"coins": 1, "history": 1})
 
     if not user:
         return redirect(url_for("login"))
 
     
-    if user["history"]:
+    if user.get("history"):
         history = json.loads(user["history"])
     else:
         history = []
@@ -1687,34 +1524,19 @@ def workoutLog():
 def history():
     if 'username' not in session:
         return redirect(url_for('login'))
-        
-    # 1. Use your helper function to open the connection
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    if 'username' not in session:
+        return redirect(url_for('login'))
     username = session['username']
-    
-    # 2. Query using the username
-    cursor.execute("SELECT history, coins FROM UserLogins WHERE username = ?", (username,))
-    row = cursor.fetchone()
-    
+    row = users_collection.find_one({"username": username}, {"history": 1, "coins": 1})   
+    row = users_collection.find_one({"username": username}, {"history": 1, "coins": 1})
     history_data = []
     points = 0
-    
-    # NOTE: If your get_db_connection() uses conn.row_factory = sqlite3.Row, 
-    # you must access columns by name: row['history'] and row['coins'] instead of indexes.
     if row:
         try:
-            # Checking if row acts like a dictionary or a tuple fallback
-            hist_col = row['history'] if isinstance(row, sqlite3.Row) else row[0]
-            coin_col = row['coins'] if isinstance(row, sqlite3.Row) else row[1]
-            
-            history_data = json.loads(hist_col) if hist_col else []
-            points = coin_col if coin_col is not None else 0
+            history_data = json.loads(row["history"]) if row.get("history") else []
+            points = row.get("coins") or 0
         except Exception:
             history_data = []
-
-    # 3. Always close the connection
-    conn.close()
 
     return render_template('workoutLog.html', history=history_data, points=points)
 
@@ -1726,30 +1548,17 @@ def shop():
         return redirect(url_for("login"))
 
     uid = session["user_id"]
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    #get user data (Coins & Equipped)
-    cursor.execute("SELECT coins, equipped_outfit FROM UserLogins WHERE id=?", (uid,))
-    user = cursor.fetchone()
-
-    #make sure login
+    user = users_collection.find_one({"id": uid})
     if user is None:
-        conn.close()
         session.clear()
         return redirect(url_for("login"))
-
-    #get outfits
-    cursor.execute("SELECT outfit_name FROM UserOutfits WHERE user_id=?", (uid,))
-    owned = [row["outfit_name"] for row in cursor.fetchall()]
-
-    conn.close()
+    owned = user.get("owned_outfits", [])
 
     return render_template(
         "shop.html",
         coins=user["coins"],
         owned=owned,
-        equipped=user["equipped_outfit"] if user["equipped_outfit"] else ""
+        equipped=user.get("equipped_outfit") or ""
     )
 
 @app.route('/buy_costume', methods=["POST"])
@@ -1762,37 +1571,18 @@ def buy_costume():
     cost = data["cost"]
     uid = session["user_id"]
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    #get coins
-    cursor.execute("SELECT coins FROM UserLogins WHERE id=?", (uid,))
-    user = cursor.fetchone()
-
+    user = users_collection.find_one({"id": uid}, {"coins": 1, "owned_outfits": 1})
     if not user or user["coins"] < cost:
-        conn.close()
         return jsonify(status="not_enough")
-
-    #check owned outfts
-    cursor.execute("SELECT * FROM UserOutfits WHERE user_id=? AND outfit_name=?", (uid, outfit))
-    if cursor.fetchone():
-        conn.close()
+    if outfit in user.get("owned_outfits", []):
         return jsonify(status="already_owned")
 
-    #buy and save new outfits
-    try:
-        new_coins = user["coins"] - cost
-        cursor.execute("UPDATE UserLogins SET coins=? WHERE id=?", (new_coins, uid))
-        cursor.execute("INSERT INTO UserOutfits (user_id, outfit_name) VALUES (?, ?)", (uid, outfit))
-        conn.commit()
-        status = "success"
-    except sqlite3.Error:
-        conn.rollback()
-        status = "error"
-    finally:
-        conn.close()
-
-    return jsonify(status=status, new_coins=new_coins)
+    new_coins = user["coins"] - cost
+    users_collection.update_one(
+        {"id": uid},
+        {"$set": {"coins": new_coins}, "$addToSet": {"owned_outfits": outfit}},
+    )
+    return jsonify(status="success", new_coins=new_coins)
 
 @app.route('/wear_costume', methods=["POST"])
 def wear_costume():
@@ -1803,20 +1593,10 @@ def wear_costume():
     outfit = data["costume"]
     uid = session["user_id"]
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    #check they own it
-    cursor.execute("SELECT * FROM UserOutfits WHERE user_id=? AND outfit_name=?", (uid, outfit))
-    if not cursor.fetchone():
-        conn.close()
+    user = users_collection.find_one({"id": uid}, {"owned_outfits": 1})
+    if not user or outfit not in user.get("owned_outfits", []):
         return jsonify(status="not_owned")
-
-    #change UserLogin main outfit
-    cursor.execute("UPDATE UserLogins SET equipped_outfit=? WHERE id=?", (outfit, uid))
-    conn.commit()
-    conn.close()
-
+    users_collection.update_one({"id": uid}, {"$set": {"equipped_outfit": outfit}})
     return jsonify(status="success")
 
 @app.route('/settings')
@@ -1831,37 +1611,26 @@ def logout():
 @app.route('/log_completed_workout', methods=['POST'])
 def log_completed_workout():
     print("--> /log_completed_workout endpoint was triggered!")
-    
+
     if 'user_id' not in session and 'username' not in session:
         print("--> ERROR: No valid user found in session.")
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
-    
+
     is_using_uid = 'user_id' in session
     user_identifier = session['user_id'] if is_using_uid else session['username']
-    
+
     data = request.get_json() or {}
     workout_name = data.get('workout_name', 'Completed Routine').strip()
-    
-    print(f"--> User Identifier: {user_identifier} | Workout Completed: {workout_name}")
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        if is_using_uid:
-            cursor.execute("SELECT history FROM UserLogins WHERE id = ?", (user_identifier,))
-        else:
-            cursor.execute("SELECT history FROM UserLogins WHERE username = ?", (user_identifier,))
-            
-        row = cursor.fetchone()
-        
-        raw_history = None
-        if row:
-            if hasattr(row, 'keys'): 
-                raw_history = row['history']
-            else:
-                raw_history = row[0]
 
+    print(f"--> User Identifier: {user_identifier} | Workout Completed: {workout_name}")
+
+    # Build the filter the same way the old code chose which column to match on.
+    query = {"id": user_identifier} if is_using_uid else {"username": user_identifier}
+
+    try:
+        row = users_collection.find_one(query, {"history": 1})
+
+        raw_history = row.get("history") if row else None
         print(f"--> Prior Raw History string in DB: {raw_history}")
 
         if raw_history and raw_history != '[]':
@@ -1872,28 +1641,21 @@ def log_completed_workout():
                 history_list = []
         else:
             history_list = []
-            
+
         history_list.append(workout_name)
         updated_history_str = json.dumps(history_list)
-        
+
         print(f"--> New History String to save: {updated_history_str}")
-        
-        if is_using_uid:
-            cursor.execute("UPDATE UserLogins SET history = ? WHERE id = ?", (updated_history_str, user_identifier))
-        else:
-            cursor.execute("UPDATE UserLogins SET history = ? WHERE username = ?", (updated_history_str, user_identifier))
-            
-        conn.commit()
+
+        users_collection.update_one(query, {"$set": {"history": updated_history_str}})
+
         print("--> DATABASE UPDATE COMPLETE! Change committed successfully.")
-        
+
         return jsonify({"status": "success", "total_items": len(history_list)}), 200
-        
+
     except Exception as e:
         print(f"--> CRITICAL WRITE ERROR: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-        
-    finally:
-        conn.close()
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
@@ -2081,35 +1843,23 @@ def admin_required(f):
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    conn = get_db_connection()
-    cur  = conn.cursor()
+    total_users = users_collection.count_documents({})
+    agg = list(users_collection.aggregate([{"$group": {
+        "_id": None,
+        "coins": {"$sum": "$coins"},
+        "workouts": {"$sum": "$current_workout"},
+        "outfits": {"$sum": {"$size": {"$ifNull": ["$owned_outfits", []]}}},
+    }}]))
+    stats = agg[0] if agg else {"coins": 0, "workouts": 0, "outfits": 0}
+    total_coins, total_workouts, total_outfits = stats["coins"], stats["workouts"], stats["outfits"]
 
-    cur.execute("SELECT COUNT(*) AS cnt FROM UserLogins")
-    total_users = cur.fetchone()["cnt"]
-
-    cur.execute("SELECT COALESCE(SUM(coins),0) AS s FROM UserLogins")
-    total_coins = cur.fetchone()["s"]
-
-    cur.execute("SELECT COALESCE(SUM(current_workout),0) AS s FROM UserLogins")
-    total_workouts = cur.fetchone()["s"]
-
-    cur.execute("SELECT COUNT(*) AS cnt FROM UserOutfits")
-    total_outfits = cur.fetchone()["cnt"]
-
-    cur.execute("""
-        SELECT id, username, email, goal, workouts_per_week,
-               body_part, coins, current_workout, equipped_outfit
-        FROM UserLogins ORDER BY id
-    """)
-    users = [dict(r) for r in cur.fetchall()]
-
+    users = list(users_collection.find({}, {
+        "id": 1, "username": 1, "email": 1, "goal": 1, "workouts_per_week": 1,
+        "body_part": 1, "coins": 1, "current_workout": 1, "equipped_outfit": 1,
+        "owned_outfits": 1, "_id": 0,
+    }).sort("id", 1))
     for u in users:
-        cur.execute(
-            "SELECT outfit_name FROM UserOutfits WHERE user_id=?", (u["id"],)
-        )
-        u["outfits"] = [r["outfit_name"] for r in cur.fetchall()]
-
-    conn.close()
+        u["outfits"] = u.get("owned_outfits", [])
 
     return render_template(
         "admin.html",
@@ -2138,17 +1888,20 @@ def admin_add_user():
     goal     = request.form.get("goal", "").strip() or None
 
     try:
-        conn = get_db_connection()
-        cur  = conn.cursor()
-        cur.execute(
-            """INSERT INTO UserLogins
-               (username, email, password, coins, goal, history, current_workout)
-               VALUES (?, ?, ?, ?, ?, '[]', 0)""",
-            (username, email, password, coins, goal),
-        )
-        conn.commit()
-        conn.close()
+        users_collection.insert_one({
+            "id": next_user_id(),
+            "username": username,
+            "email": email,
+            "password": password,
+            "coins": coins,
+            "goal": goal,
+            "history": "[]",
+            "current_workout": 0,
+            "owned_outfits": [],
+        })
         flash(f"User '{username}' created.", "success")
+    except DuplicateKeyError:
+        flash("Error creating user: username or email already exists.", "danger")
     except Exception as e:
         flash(f"Error creating user: {e}", "danger")
 
@@ -2167,41 +1920,25 @@ def admin_edit_user(uid):
 
     new_pw = request.form.get("new_password", "").strip()
 
-    conn = get_db_connection()
-    cur  = conn.cursor()
-
+    update_fields = {
+        "username": username,
+        "email": email,
+        "coins": coins,
+        "goal": goal,
+        "workouts_per_week": workouts_per_week,
+        "body_part": body,
+    }
     if new_pw:
-        cur.execute(
-            """UPDATE UserLogins
-               SET username=?, email=?, coins=?, goal=?,
-                   workouts_per_week=?, body_part=?, password=?
-               WHERE id=?""",
-            (username, email, coins, goal,
-             workouts_per_week, body, generate_password_hash(new_pw), uid),
-        )
-    else:
-        cur.execute(
-            """UPDATE UserLogins
-               SET username=?, email=?, coins=?, goal=?,
-                   workouts_per_week=?, body_part=?
-               WHERE id=?""",
-            (username, email, coins, goal, workouts_per_week, body, uid),
-        )
+        update_fields["password"] = generate_password_hash(new_pw)
 
-    conn.commit()
-    conn.close()
+    users_collection.update_one({"id": uid}, {"$set": update_fields})
     flash(f"User #{uid} updated.", "success")
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/delete_user/<int:uid>", methods=["POST"])
 @admin_required
 def admin_delete_user(uid):
-    conn = get_db_connection()
-    cur  = conn.cursor()
-    cur.execute("DELETE FROM UserOutfits WHERE user_id=?", (uid,))
-    cur.execute("DELETE FROM UserLogins  WHERE id=?",      (uid,))
-    conn.commit()
-    conn.close()
+    users_collection.delete_one({"id": uid})
     flash(f"User #{uid} deleted.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -2209,14 +1946,10 @@ def admin_delete_user(uid):
 @admin_required
 def admin_adjust_coins(uid):
     amount = int(request.form.get("amount", 0))
-    conn = get_db_connection()
-    cur  = conn.cursor()
-    cur.execute(
-        "UPDATE UserLogins SET coins = MAX(0, coins + ?) WHERE id=?",
-        (amount, uid),
+    users_collection.update_one(
+        {"id": uid},
+        [{"$set": {"coins": {"$max": [0, {"$add": ["$coins", amount]}]}}}],
     )
-    conn.commit()
-    conn.close()
     flash(f"Coins adjusted by {amount:+d} for user #{uid}.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -2224,36 +1957,25 @@ def admin_adjust_coins(uid):
 @admin_required
 def admin_grant_outfit(uid):
     outfit = request.form["outfit"]
-    conn = get_db_connection()
-    cur  = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM UserOutfits WHERE user_id=? AND outfit_name=?",
-        (uid, outfit),
+    already_owns = users_collection.find_one(
+        {"id": uid, "owned_outfits": outfit}, {"_id": 1}
     )
-    if not cur.fetchone():
-        cur.execute(
-            "INSERT INTO UserOutfits (user_id, outfit_name) VALUES (?,?)",
-            (uid, outfit),
+    if not already_owns:
+        users_collection.update_one(
+            {"id": uid}, {"$addToSet": {"owned_outfits": outfit}}
         )
-        conn.commit()
         flash(f"Outfit '{outfit}' granted to user #{uid}.", "success")
     else:
         flash(f"User #{uid} already owns '{outfit}'.", "warning")
-    conn.close()
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/revoke_outfit/<int:uid>", methods=["POST"])
 @admin_required
 def admin_revoke_outfit(uid):
     outfit = request.form["outfit"]
-    conn = get_db_connection()
-    cur  = conn.cursor()
-    cur.execute(
-        "DELETE FROM UserOutfits WHERE user_id=? AND outfit_name=?",
-        (uid, outfit),
+    users_collection.update_one(
+        {"id": uid}, {"$pull": {"owned_outfits": outfit}}
     )
-    conn.commit()
-    conn.close()
     flash(f"Outfit '{outfit}' revoked from user #{uid}.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -2297,33 +2019,21 @@ def admin_remove_outfit():
 @app.route("/admin/reset_workout_count/<int:uid>", methods=["POST"])
 @admin_required
 def admin_reset_workout_count(uid):
-    conn = get_db_connection()
-    cur  = conn.cursor()
-    cur.execute("UPDATE UserLogins SET current_workout=0 WHERE id=?", (uid,))
-    conn.commit()
-    conn.close()
+    users_collection.update_one({"id": uid}, {"$set": {"current_workout": 0}})
     flash(f"Workout count reset for user #{uid}.", "success")
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/danger/reset_all_coins", methods=["POST"])
 @admin_required
 def admin_reset_all_coins():
-    conn = get_db_connection()
-    cur  = conn.cursor()
-    cur.execute("UPDATE UserLogins SET coins = 1000")
-    conn.commit()
-    conn.close()
+    users_collection.update_many({}, {"$set": {"coins": 1000}})
     flash("All user coin balances reset to 1,000.", "success")
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/danger/clear_all_history", methods=["POST"])
 @admin_required
 def admin_clear_all_history():
-    conn = get_db_connection()
-    cur  = conn.cursor()
-    cur.execute("UPDATE UserLogins SET current_workout = 0, history = '[]'")
-    conn.commit()
-    conn.close()
+    users_collection.update_many({}, {"$set": {"current_workout": 0, "history": "[]"}})
     flash("All workout history cleared.", "success")
     return redirect(url_for("admin_dashboard"))
 
