@@ -34,6 +34,14 @@ Fit Compass is a workout coach that helps beginners get started with exercise by
 - Python 3.11.9
 - SQLite 3.44
 
+## .env
+```
+GOOGLE_CLIENT_ID='699718565271-7nb4p0cehb2s6dhd3bdvh55j2l8h8785.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET='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'
+
+MONGO_URI='mongodb+srv://nwu039_db_user:110FinalProject@110finalproject.qqbdij6.mongodb.net/?retryWrites=true&w=majority&appName=110FinalProject'
+```
+
 ## Launch instructions
 - clone repo
 - ```bash
