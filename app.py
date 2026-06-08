@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from flask_mail import Mail,Message
 from dotenv import load_dotenv
+from pymongo import MongoClient
 load_dotenv()
 from authlib.integrations.flask_client import OAuth
 from werkzeug.security import generate_password_hash, check_password_hash
