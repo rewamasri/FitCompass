@@ -1716,56 +1716,224 @@ def submit_review():
 
 @app.route('/add_friend', methods=['POST'])
 def add_friend():
+    """Send a friend request to another user.
+
+    The request is stored with status "pending" and does not become an
+    active friendship until the recipient accepts it via /accept_friend.
+
+    Returns:
+        flask.Response: On success, JSON {"success": True, "message": str}.
+            On failure, JSON {"error": str} with a 4xx status.
+    """
     if 'username' not in session:
         return jsonify({"error": "Not logged in"}), 401
-    
-    data = request.get_json()
+
+    data = request.get_json(silent=True) or {}
     friend_username = data.get("friend_username", "").strip()
     current_user = session['username']
-    
-    # Basic validation
-    if not friend_username or friend_username.lower() == current_user.lower():
-        return jsonify({"error": "Invalid username."}), 400
-        
-    # Check if they are already friends
-    existing_friendship = friends_collection.find_one({
+
+    if not friend_username:
+        return jsonify({"error": "Please enter a username."}), 400
+    if friend_username.lower() == current_user.lower():
+        return jsonify({"error": "You cannot add yourself."}), 400
+
+    target = users_collection.find_one({"username": friend_username})
+    if not target:
+        return jsonify({"error": "Friend not found."}), 404
+
+    friend_username = target["username"]
+
+    existing = friends_collection.find_one({
         "$or": [
             {"user1": current_user, "user2": friend_username},
-            {"user1": friend_username, "user2": current_user}
+            {"user1": friend_username, "user2": current_user},
         ]
     })
+
+    if existing:
+        if existing.get("status") == "accepted":
+            return jsonify({"error": "You are already friends!"}), 400
+        if existing["user1"] == current_user:
+            return jsonify({"error": "Friend request already sent."}), 400
+        return jsonify({
+            "error": f"{friend_username} already sent you a request. "
+                     f"Check your requests to accept it."
+        }), 400
     
-    if existing_friendship:
-        return jsonify({"error": "You are already friends!"}), 400
-        
-    # Create the friendship document in MongoDB
     friends_collection.insert_one({
         "user1": current_user,
         "user2": friend_username,
-        "status": "friends" # Keeping it simple: auto-accept for now!
+        "status": "pending",
     })
-    
-    return jsonify({"success": True, "message": f"You are now friends with {friend_username}!"})
+
+    return jsonify({
+        "success": True,
+        "message": f"Friend request sent to {friend_username}!"
+    })
 
 @app.route('/get_friends', methods=['GET'])
 def get_friends():
+    """Return the current user's accepted friends only.
+
+    Pending requests are intentionally excluded so they do not appear in
+    the friends list until accepted.
+
+    Returns:
+        flask.Response: JSON list of {"username": str}, or {"error": str}
+            with a 401 status if not logged in.
+    """
     if 'username' not in session:
         return jsonify({"error": "Not logged in"}), 401
-        
+
     current_user = session['username']
-    
-    # Ask MongoDB for any document where the current user is user1 OR user2
+
     friend_docs = friends_collection.find({
-        "$or": [{"user1": current_user}, {"user2": current_user}]
+        "status": "accepted",
+        "$or": [{"user1": current_user}, {"user2": current_user}],
     })
-    
+
     friends_list = []
     for doc in friend_docs:
-        # If I am user1, my friend is user2. If I am user2, my friend is user1.
         friend_name = doc["user2"] if doc["user1"] == current_user else doc["user1"]
         friends_list.append({"username": friend_name})
-        
+
     return jsonify(friends_list)
+
+@app.route('/get_friend_requests', methods=['GET'])
+def get_friend_requests():
+    """Return pending friend requests sent TO the current user.
+
+    Only incoming requests (current user stored as user2) with status
+    "pending" are returned.
+
+    Returns:
+        flask.Response: JSON list of {"username": str} naming the
+            requesters, or {"error": str} with a 401 status if not logged in.
+    """
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    current_user = session['username']
+
+    pending = friends_collection.find({
+        "user2": current_user,
+        "status": "pending",
+    })
+
+    return jsonify([{"username": doc["user1"]} for doc in pending])
+
+@app.route('/accept_friend', methods=['POST'])
+def accept_friend():
+    """Accept a pending friend request.
+
+    Promotes the matching pending request (requester=user1,
+    recipient=current user=user2) to status "accepted".
+
+    Returns:
+        flask.Response: JSON {"success": True, "message": str} on success,
+            or {"error": str} with a 4xx status on failure.
+    """
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json(silent=True) or {}
+    requester = data.get("friend_username", "").strip()
+    current_user = session['username']
+
+    if not requester:
+        return jsonify({"error": "No username provided."}), 400
+
+    result = friends_collection.update_one(
+        {"user1": requester, "user2": current_user, "status": "pending"},
+        {"$set": {"status": "accepted"}},
+    )
+
+    if result.matched_count == 0:
+        return jsonify({"error": "No pending request from that user."}), 404
+
+    return jsonify({
+        "success": True,
+        "message": f"You are now friends with {requester}!"
+    })
+
+@app.route('/decline_friend', methods=['POST'])
+def decline_friend():
+    """Decline (delete) a pending friend request.
+
+    Returns:
+        flask.Response: JSON {"success": True, "message": str} on success,
+            or {"error": str} with a 4xx status on failure.
+    """
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json(silent=True) or {}
+    requester = data.get("friend_username", "").strip()
+    current_user = session['username']
+
+    if not requester:
+        return jsonify({"error": "No username provided."}), 400
+
+    result = friends_collection.delete_one(
+        {"user1": requester, "user2": current_user, "status": "pending"}
+    )
+
+    if result.deleted_count == 0:
+        return jsonify({"error": "No pending request from that user."}), 404
+
+    return jsonify({"success": True, "message": "Request declined."})
+
+@app.route('/recommend_friends', methods=['GET'])
+def recommend_friends():
+    """Recommend users who share the current user's workout goal.
+
+    Matches on the exact `goal` field, which is a controlled value set at
+    signup ("get fit", "lose weight", "gain strength"). The generic
+    "other" goal is skipped because it is a catch-all whose real content
+    lives in `goal_other`, so a shared "other" label is not a shared goal.
+    The current user and anyone already linked to them (any pending or
+    accepted friendship, in either direction) are excluded.
+
+    Returns:
+        flask.Response: JSON list of objects shaped
+            {"username": str, "goal": str, "workouts_per_week": int | None}.
+            Empty list if the user has no concrete goal or no matches.
+            {"error": str} with a 401 status if not logged in.
+    """
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    current_user = session['username']
+
+    me = users_collection.find_one({"username": current_user}, {"goal": 1})
+    my_goal = (me or {}).get("goal")
+
+    if not my_goal or my_goal == "other":
+        return jsonify([])
+    
+    linked = friends_collection.find(
+        {"$or": [{"user1": current_user}, {"user2": current_user}]}
+    )
+    excluded = {current_user}
+    for doc in linked:
+        excluded.add(doc["user1"])
+        excluded.add(doc["user2"])
+
+    candidates = users_collection.find(
+        {"goal": my_goal, "username": {"$nin": list(excluded)}},
+        {"_id": 0, "username": 1, "goal": 1, "workouts_per_week": 1},
+    ).limit(10)
+
+    recommendations = [
+        {
+            "username": c["username"],
+            "goal": c.get("goal"),
+            "workouts_per_week": c.get("workouts_per_week"),
+        }
+        for c in candidates
+    ]
+
+    return jsonify(recommendations)
 
 @app.route('/inbox')
 def inbox():
@@ -1802,7 +1970,6 @@ def get_conversation(friend_username):
         
     current_user = session['username']
     
-    # Ask MongoDB for messages where I am the sender and they are the receiver, OR vice versa
     query = {
         "$or": [
             {"sender": current_user, "receiver": friend_username},
@@ -1810,7 +1977,6 @@ def get_conversation(friend_username):
         ]
     }
     
-    # Sort chronologically by MongoDB's automatic _id
     messages = list(messages_collection.find(query).sort("_id", 1))
     
     chat_history = []
