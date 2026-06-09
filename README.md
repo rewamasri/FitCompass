@@ -18,7 +18,7 @@ https://github.com/pilafnoodle/FitCompass
 - Email reminders at set times
 - Workout summary and analysis
 
-##110 Features
+## 110 Features
  Social Network
 - Friend requests, messaging friends, friend recommendations based on workout goals
 DataBase
