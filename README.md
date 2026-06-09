@@ -21,6 +21,7 @@ https://github.com/pilafnoodle/FitCompass
 ## 110 Features
  Social Network
 - Friend requests, messaging friends, friend recommendations based on workout goals
+
 DataBase
 - MongoDB
 
