@@ -2,12 +2,14 @@
 ## Project Description
 
 Fit Compass is a workout coach that helps beginners get started with exercise by providing structured workout guidance. Many beginners struggle with keeping count of reps, not knowing what exercises to do, and cheating themselves out on workouts. Fit Compass solves these problems by providing workouts for the user when logging in, counting repetitions when a movement is completed, and allowing progression only when the form is correct.
+Original GitHub Repo:
+https://github.com/pilafnoodle/FitCompass
 
 ## Techstack
 - Front End Tech-Stack: JavaScript, CSS, HTML, Java
 - Back End Tech-Stack: MongoDB, Flask, OpenCV, Dotenv, Mediapipe
 
-## Features
+## 178 Features
 - Workout generation and workout library 
 - Automated exercise repetition counting
 - Anti-cheat locks and checks
@@ -15,6 +17,12 @@ Fit Compass is a workout coach that helps beginners get started with exercise by
 - Audio cues at 25%, 50% and 75% complete
 - Email reminders at set times
 - Workout summary and analysis
+
+##110 Features
+ Social Network
+- Friend requests, messaging friends, friend recommendations based on workout goals
+DataBase
+- MongoDB
 
 ## Usage 
 
