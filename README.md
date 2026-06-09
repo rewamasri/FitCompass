@@ -5,7 +5,7 @@ Fit Compass is a workout coach that helps beginners get started with exercise by
 
 ## Techstack
 - Front End Tech-Stack: JavaScript, CSS, HTML, Java
-- Back End Tech-Stack: Django, SQLite3, Flask, OpenCV, Dotenv, Mediapipe
+- Back End Tech-Stack: MongoDB, Flask, OpenCV, Dotenv, Mediapipe
 
 ## Features
 - Workout generation and workout library 
@@ -59,7 +59,6 @@ MONGO_URI='mongodb+srv://nwu039_db_user:110FinalProject@110finalproject.qqbdij6.
 
 ## Known Issues
 - consistency score not available for supermans, pushups or glute bridges
-- some routes broken on history page
 
 
 
