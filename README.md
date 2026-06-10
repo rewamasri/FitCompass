@@ -29,6 +29,7 @@ Amshu: Database and miscellaneous
 - Conversion from SQLite to MongoDB using pymongo
 - Creation of History page (previously was hardcoded and did not update the title or exercise list)
 - Email reminders to work out based on the number of workouts per week by user preference
+- Added search bar in workout library for the user to search by workout title or specific exercise
 - Addition of buttons to ensure the side panel on all webpages is consistent and leads to the right pages
 
 ## Usage 
