@@ -24,6 +24,8 @@ https://github.com/pilafnoodle/FitCompass
 - Friend requests
 - Messaging friends in chatbox
 - Friend recommendations based on workout goals
+- Allow users to rate their workouts at the end
+- Allow users to comment under workout videos in the library
 
 Amshu: Database and miscellaneous features
 - Conversion from SQLite to MongoDB using pymongo
