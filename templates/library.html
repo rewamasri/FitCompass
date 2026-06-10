@@ -77,6 +77,32 @@
       letter-spacing: .5px;
     }
 
+    /* ---------------- SEARCH ---------------- */
+    .search-wrap{
+      margin-left: auto;          /* push the search box to the right edge */
+      display: flex;
+      align-items: center;
+    }
+    .search-input{
+      font-family: var(--font);
+      font-size: 16px;
+      padding: 10px 14px;
+      width: 280px;
+      max-width: 50vw;
+      border: 2px solid rgba(0,0,0,.15);
+      border-radius: 10px;
+      background: white;
+      color: var(--text-dark);
+      outline: none;
+    }
+    .search-input:focus{ border-color: var(--bg-main); }
+
+    .no-results{
+      color: var(--text-light);
+      font-style: italic;
+      padding: 8px 0 20px;
+    }
+
     .content{
       padding: 26px;
     }
@@ -245,6 +271,16 @@
       <header class="top-strip">
         <button class="sidebar-toggle" type="button" onclick="openSidebar()" aria-label="Open sidebar">☰</button>
         <h1>All Workouts</h1>
+        <div class="search-wrap">
+          <input
+            type="text"
+            id="workoutSearch"
+            class="search-input"
+            placeholder="Search workouts or exercises..."
+            oninput="filterWorkouts()"
+            aria-label="Search workouts or exercises"
+          />
+        </div>
       </header>
       
       <div class="content">
@@ -344,7 +380,9 @@
             </div>
           </section>
         </form>
-        
+
+        <p id="noResults" class="no-results" hidden>No workouts match your search.</p>
+
         <div class="divider"></div>
 
         <section class="section">
@@ -365,6 +403,43 @@
   </div>
 
   <script>
+    // --- SEARCH / FILTER LOGIC ---
+    // Filters the static workout cards by matching the query against each
+    // card's title (<h3>) and its exercise list (<li> items). Case-insensitive
+    // substring match, so "michalis", "Michalis Mode 1", and "lunges" all work.
+    function filterWorkouts() {
+      const input = document.getElementById("workoutSearch");
+      const query = input.value.trim().toLowerCase();
+      let totalVisible = 0;
+
+      // Show or hide each card based on title + exercise text.
+      document.querySelectorAll(".workout-card").forEach(card => {
+        const titleEl = card.querySelector("h3");
+        const title = (titleEl ? titleEl.innerText : "").toLowerCase();
+        const exercises = Array.from(card.querySelectorAll("li"))
+          .map(li => li.innerText.toLowerCase())
+          .join(" ");
+        const haystack = title + " " + exercises;
+
+        const match = query === "" || haystack.includes(query);
+        card.style.display = match ? "" : "none";
+        if (match) totalVisible++;
+      });
+
+      // Hide a section heading when none of its cards are visible.
+      // Sections without workout cards (e.g. the discussion section) are skipped.
+      document.querySelectorAll(".section").forEach(section => {
+        const cards = section.querySelectorAll(".workout-card");
+        if (cards.length === 0) return;
+        const anyVisible = Array.from(cards).some(c => c.style.display !== "none");
+        section.style.display = anyVisible ? "" : "none";
+      });
+
+      // Show the "no results" message only when a query matched nothing.
+      const noResults = document.getElementById("noResults");
+      if (noResults) noResults.hidden = (totalVisible !== 0);
+    }
+
     // --- SIDEBAR LOGIC ---
     function openSidebar() {
       document.getElementById("sidebar").classList.add("open");
