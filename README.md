@@ -25,12 +25,12 @@ https://github.com/pilafnoodle/FitCompass
 - messaging friends and reacting to their messages
 - friend recommendations based on workout goals
 
-Amshu: Database and miscellaneous 
+Amshu: Database and miscellaneous features
 - Conversion from SQLite to MongoDB using pymongo
 - Creation of History page (previously was hardcoded and did not update the title or exercise list)
 - Email reminders to work out based on the number of workouts per week by user preference
 - Added search bar in workout library for the user to search by workout title or specific exercise
-- Addition of buttons to ensure the side panel on all webpages is consistent and leads to the right pages
+- Addition of buttons to ensure the side panel on all webpages is consistent and leads to the right pages (such as the inbox button and workout complete)
 
 ## Usage 
 
