@@ -15,16 +15,21 @@ https://github.com/pilafnoodle/FitCompass
 - Automated exercise repetition counting
 - Anti-cheat locks and checks
 - Coach avatar outfit shop
-- Audio cues at 25%, 50% and 75% complete
-- Email reminders at set times
+- Audio cues at 25%, 50%, and 75% complete
+- Email reminders upon creating an account and workout completion statistics
 - Workout summary and analysis
 
 ## 110 Features
- Social Network
-- Friend requests, messaging friends, friend recommendations based on workout goals
+ Natalie: Social Network
+- Friend requests
+- messaging friends and reacting to their messages
+- friend recommendations based on workout goals
 
-DataBase
-- MongoDB
+Amshu: Database and miscellaneous 
+- Conversion from SQLite to MongoDB using pymongo
+- Creation of History page (previously was hardcoded and did not update the title or exercise list)
+- Email reminders to work out based on the number of workouts per week by user preference
+- Addition of buttons to ensure the side panel on all webpages is consistent and leads to the right pages
 
 ## Usage 
 
