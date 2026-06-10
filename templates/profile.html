@@ -340,8 +340,17 @@ body{
       </div>
       <div id="friendMsg" class="friend-msg"></div>
 
-      <div class="friends-list" id="friendsList">
-        </div>
+      <div id="requestsSection" style="display:none;">
+        <h4 style="margin:10px 0 6px;">Friend Requests</h4>
+        <div class="friends-list" id="requestsList"></div>
+      </div>
+
+      <div class="friends-list" id="friendsList"></div>
+
+      <div id="recsSection" style="display:none;">
+        <h4 style="margin:14px 0 6px;">Suggested for You</h4>
+        <div class="friends-list" id="recsList"></div>
+      </div>
     </div>
 
   </div>
@@ -413,9 +422,121 @@ body{
     }
   }
 
-  // Load the friends list automatically when the page opens
+  async function loadRequests() {
+    try {
+      const response = await fetch('/get_friend_requests');
+      const requests = await response.json();
+      const section = document.getElementById('requestsSection');
+      const listDiv = document.getElementById('requestsList');
+      listDiv.innerHTML = '';
+
+      if (!Array.isArray(requests) || requests.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      requests.forEach(r => {
+        const initial = r.username.charAt(0).toUpperCase();
+        listDiv.innerHTML += `
+          <div class="friend-item">
+            <div class="friend-avatar-placeholder">${initial}</div>
+            <strong style="flex:1;">${r.username}</strong>
+            <button onclick="respondToRequest('${r.username}', true)">Accept</button>
+            <button onclick="respondToRequest('${r.username}', false)">Decline</button>
+          </div>
+        `;
+      });
+    } catch (error) {
+      console.error("Failed to fetch requests:", error);
+    }
+  }
+
+  async function respondToRequest(username, accept) {
+    const endpoint = accept ? '/accept_friend' : '/decline_friend';
+    const msgDiv = document.getElementById('friendMsg');
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friend_username: username })
+      });
+      const result = await response.json();
+      if (response.ok) {
+        msgDiv.style.color = '#1f4d69';
+        msgDiv.innerText = result.message;
+        loadRequests(); // refresh pending list
+        loadFriends();  // refresh accepted friends
+      } else {
+        msgDiv.style.color = '#d83a4a';
+        msgDiv.innerText = result.error || "Action failed.";
+      }
+    } catch (error) {
+      msgDiv.style.color = '#d83a4a';
+      msgDiv.innerText = "Server error.";
+    }
+  }
+
+  async function loadRecommendations() {
+    try {
+      const response = await fetch('/recommend_friends');
+      const recs = await response.json();
+      const section = document.getElementById('recsSection');
+      const listDiv = document.getElementById('recsList');
+      listDiv.innerHTML = '';
+
+      if (!Array.isArray(recs) || recs.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      recs.forEach(r => {
+        const initial = r.username.charAt(0).toUpperCase();
+        const wpw = r.workouts_per_week ? ` &middot; ${r.workouts_per_week}x/week` : '';
+        listDiv.innerHTML += `
+          <div class="friend-item">
+            <div class="friend-avatar-placeholder">${initial}</div>
+            <div style="flex:1;">
+              <strong>${r.username}</strong>
+              <div style="font-size:12px;color:#444;">Goal: ${r.goal}${wpw}</div>
+            </div>
+            <button onclick="requestFriend('${r.username}')">Add</button>
+          </div>
+        `;
+      });
+    } catch (error) {
+      console.error("Failed to fetch recommendations:", error);
+    }
+  }
+
+  async function requestFriend(username) {
+    const msgDiv = document.getElementById('friendMsg');
+    try {
+      const response = await fetch('/add_friend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friend_username: username })
+      });
+      const result = await response.json();
+      if (response.ok) {
+        msgDiv.style.color = '#1f4d69';
+        msgDiv.innerText = result.message;
+        loadRecommendations();
+      } else {
+        msgDiv.style.color = '#d83a4a';
+        msgDiv.innerText = result.error || "Could not send request.";
+      }
+    } catch (error) {
+      msgDiv.style.color = '#d83a4a';
+      msgDiv.innerText = "Server error.";
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     loadFriends();
+    loadRequests();
+    loadRecommendations();
   });
 </script>
 
