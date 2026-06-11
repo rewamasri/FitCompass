@@ -34,6 +34,16 @@ Amshu: Database and miscellaneous features
 - Added search bar in workout library for the user to search by workout title or specific exercise
 - Addition of buttons to ensure the side panel on all webpages is consistent and leads to the right pages (such as the inbox button and workout complete)
 
+Rewa: Authentication and Admin Features
+- Implemented Google OAuth login
+- Added secure user authentication and session management
+- Created admin-only access controls
+- Built admin dashboard functionality
+- Enabled viewing and management of user data
+- Connected admin features to MongoDB
+- Added tools for managing platform content and features
+- Maintained system administration functionality
+
 ## Usage 
 
 - Register in app with chosen username and password
