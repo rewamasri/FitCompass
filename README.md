@@ -21,11 +21,12 @@ https://github.com/pilafnoodle/FitCompass
 
 ## 110 Features
  Natalie: Social Network
-- Friend requests
+- Implemented friend requests
 - Messaging friends in chatbox
 - Friend recommendations based on workout goals
 - Allow users to rate their workouts at the end
 - Allow users to comment under workout videos in the library
+- Set up MongoDB cluster
 
 Amshu: Database and miscellaneous features
 - Conversion from SQLite to MongoDB using pymongo
