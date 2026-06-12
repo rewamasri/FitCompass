@@ -41,7 +41,7 @@ Rewa: Authentication and Admin Features
 - Built admin dashboard functionality
 - Enabled viewing and management of user data
 - Connected admin features to MongoDB
-- Added tools for managing platform content and features
+- Added tools for managing platform content and features (the admin account allows changes to the workouts available and the shop options)
 - Maintained system administration functionality
 
 ## Usage 
