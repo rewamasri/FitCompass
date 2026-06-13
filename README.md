@@ -89,6 +89,9 @@ MONGO_URI='mongodb+srv://nwu039_db_user:110FinalProject@110finalproject.qqbdij6.
 ## Known Issues
 - consistency score not available for supermans, pushups or glute bridges
 
+## AI Usage
+- AI was used to help with errors or debugging the code. Gemini and Claude were used ot help us with this. 
+
 
 
 
