@@ -18,6 +18,10 @@ import random
 import json
 import time
 from pprint import pprint
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from zoneinfo import ZoneInfo
+import atexit
 
 import os
 from dotenv import load_dotenv
@@ -1078,6 +1082,77 @@ def send_fit_email(recipient_email, subject, html_content):
             server.send_message(msg)
     except Exception as e:
         print(f"Email failed: {e}")
+
+REMINDER_TZ = ZoneInfo("America/Los_Angeles")
+
+
+WORKOUT_DAY_SCHEDULE = {
+    1: {0},                    # Mon
+    2: {0, 3},                 # Mon, Thu
+    3: {0, 2, 4},              # Mon, Wed, Fri
+    4: {0, 1, 3, 4},           # Mon, Tue, Thu, Fri
+    5: {0, 1, 2, 3, 4},        # Mon-Fri
+    6: {0, 1, 2, 3, 4, 5},     # Mon-Sat
+    7: {0, 1, 2, 3, 4, 5, 6},  # every day
+}
+
+def send_workout_reminders():
+    today = datetime.now(REMINDER_TZ).weekday() 
+    cursor = users_collection.find(
+        {"email": {"$exists": True, "$ne": None}},
+        {"email": 1, "username": 1, "workouts_per_week": 1,
+         "current_workout": 1, "goal": 1, "_id": 0},
+    )
+
+    sent = 0
+    for user in cursor:
+        try:
+            wpw = int(user.get("workouts_per_week") or 0)
+        except (TypeError, ValueError):
+            wpw = 0
+        if wpw <= 0:
+            continue
+
+        reminder_days = WORKOUT_DAY_SCHEDULE.get(min(wpw, 7), set())
+        if today not in reminder_days:
+            continue
+
+        email = user.get("email")
+        if not email:
+            continue
+
+        username = user.get("username") or "there"
+        goal = user.get("goal") or "your fitness goals"
+        done = int(user.get("current_workout") or 0)
+
+        reminder_html = f"""
+            <div style="font-family: sans-serif;">
+                <h2>Today is a workout day, {username}!</h2>
+                <p>You committed to {wpw} workout(s) this week toward
+                   <strong>{goal}</strong>.</p>
+                <p>You have logged <strong>{done}</strong> so far. Open
+                   Fit Compass and get moving to stay on track!</p>
+            </div>
+        """
+        send_fit_email(email, "Fit Compass: time to work out today", reminder_html)
+        sent += 1
+
+    print(f"[reminders] {sent} reminder email(s) sent for weekday {today}")
+
+
+def start_reminder_scheduler():
+    scheduler = BackgroundScheduler(timezone=REMINDER_TZ)
+    scheduler.add_job(
+        send_workout_reminders,
+        trigger=CronTrigger(hour=0, minute=0),
+        id="daily_workout_reminders",
+        replace_existing=True,
+        coalesce=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.start()
+    atexit.register(lambda: scheduler.shutdown(wait=False))
+    return scheduler
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -2205,4 +2280,7 @@ def admin_clear_all_history():
     return redirect(url_for("admin_dashboard"))
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    use_reloader = True
+    if not use_reloader or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        start_reminder_scheduler()
+    app.run(debug=True, use_reloader=use_reloader)
