@@ -200,7 +200,7 @@
       box-shadow: 0 4px 10px rgba(0,0,0,.08);
       transition: transform .06s ease, filter .12s ease;
     }
-    .nav button:hover{ filter: brightness(.98); }
+    .nav button:hover{ background: var(--btn-green); }
     .nav button:active{ transform: translateY(1px); }
 
     .logout{
@@ -214,7 +214,7 @@
       border-radius: 10px;
       padding: 14px 14px;
       background: #d83a4a;
-      color: #1a0b0d;
+      color: white;
       cursor: pointer;
       font-family: var(--font);
       font-size: 18px;
@@ -230,11 +230,12 @@
 
     <aside class="sidebar" id="sidebar" aria-label="Sidebar navigation">
       <nav class="nav">
-        <button type="button" onclick="navigateTo('{{ url_for('home') }}')">home</button>
-        <button type="button" onclick="navigateTo('{{ url_for('profile') }}')">profile</button>
-        <button type="button" onclick="navigateTo('{{ url_for('history') }}')">history</button>
-        <button type="button" onclick="navigateTo('{{ url_for('library') }}')">library</button>
-        <button type="button" onclick="navigateTo('{{ url_for('shop') }}')">shop</button>
+        <button type="button" onclick="navigateTo('{{ url_for('home') }}')">Home</button>
+        <button type="button" onclick="navigateTo('{{ url_for('profile') }}')">Profile</button>
+        <button type="button" onclick="navigateTo('{{ url_for('history') }}')">History</button>
+        <button type="button" onclick="navigateTo('{{ url_for('library') }}')">Library</button>
+        <button type="button" onclick="navigateTo('{{ url_for('shop') }}')">Shop</button>
+        <button type="button" onclick="navigateTo('{{ url_for('inbox') }}')">Inbox</button>
       </nav>
       <div class="logout">
         <button type="button" onclick="navigateTo('{{ url_for('logout') }}')">logout</button>
